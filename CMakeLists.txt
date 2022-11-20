@@ -10,6 +10,7 @@ IF (NOT CMAKE_BUILD_TYPE)
 ENDIF ()
 MESSAGE(STATUS "${CMAKE_BUILD_TYPE} build selected")
 
+
 # If the environment does not specify a hardware revision to build for...
 IF (NOT HARDWARE_REVISION)
     set(HARDWARE_REVISION "1.0"
@@ -97,8 +98,9 @@ IF (NOT NVRAM_STORAGE_PARTITION)
     SET(NVRAM_STORAGE_PARTITION "storage" CACHE INTERNAL "NVS partition name"  FORCE)
 ENDIF()
 
-
+set(IDF_TARGET esp32s2)
 set(PROJECT_NAME hottop-sidecar-firmware)
+set(EXTRA_COMPONENT_DIRS esp-idf-lib/components)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(${PROJECT_NAME} VERSION ${PROJECT_VERSION})
 
