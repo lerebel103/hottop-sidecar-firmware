@@ -46,7 +46,7 @@ extern "C" int ssr_ctlr_get_duty(ssr_ctrl_t& inst) {
 static void _rmt_tx_init(ssr_ctrl_t& inst) {
     rmt_config_t config = RMT_DEFAULT_CONFIG_TX(inst.gpio, inst.channel);
 
-    // Disable carrier and enable loop back so we can generate pulses
+    // Disable carrier and enable loop backso we can generate pulses
     config.tx_config.carrier_en = false;
     config.tx_config.loop_en = false;
     config.tx_config.idle_output_en = true;

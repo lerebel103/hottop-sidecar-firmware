@@ -8,7 +8,7 @@
 static const adc_unit_t unit = ADC_UNIT_1;
 static esp_adc_cal_characteristics_t *adc_chars;
 
-void balance_read(double* value) {
+double balance_read_mv() {
     static int num_readings = 25;
 
     // Let things stabilise
@@ -21,7 +21,18 @@ void balance_read(double* value) {
         ets_delay_us(250);
     }
 
-    *value = level_voltage / num_readings;
+    return level_voltage / num_readings;
+}
+
+double balance_read_percent() {
+    double balance = balance_read_mv();
+    balance = (balance / 2500.0) * 100;
+    if (balance < 0) {
+        balance  = 0;
+    } else if (balance > 100) {
+        balance = 100;
+    }
+    return balance;
 }
 
 void balancer_init() {
