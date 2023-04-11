@@ -9,7 +9,8 @@ file(GLOB_RECURSE COMPONENT_SRCS
         rmt_duty_map_60hz.cpp
         balancer.cpp
         sync_signal_generator.cpp
-        power_duty_parser.cpp
+        input_power_duty.cpp
+        digital_input.cpp
         )
 
 

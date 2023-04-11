@@ -1,6 +1,6 @@
 #include <driver/gpio.h>
 #include <esp_timer.h>
-#include "power_duty.h"
+#include "input_power_duty.h"
 
 static gpio_num_t s_gpio;
 static int64_t s_on_start = 0;
@@ -9,7 +9,7 @@ static int64_t s_period_on = 0;
 
 static int64_t s_last_on_start = 0;
 
-double power_duty_get() {
+double input_power_duty_get() {
     // If we have no interrupts, we are either 0% or 100%
     double duty = 0;
     if(s_on_start == s_last_on_start) {
@@ -37,7 +37,7 @@ static void _handle_isr(void *) {
 }
 
 
-void power_duty_init(gpio_num_t gpio) {
+void input_power_duty_init(gpio_num_t gpio) {
     // --- Configure input switch that drives the pump
     s_gpio = gpio;
     gpio_config_t io_conf;
