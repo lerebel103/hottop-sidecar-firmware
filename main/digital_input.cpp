@@ -14,7 +14,8 @@ void digital_input_init(gpio_num_t gpio) {
             (1ULL << gpio)
     );
 
+    // Pull-up high is disable by default, safety state
     io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
-    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+    io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
     gpio_config(&io_conf);
 }
