@@ -20,11 +20,11 @@ extern "C" {
 
 #define TAG  "main"
 
-#define MAX_SECONDARY_HEAT_RATIO 0.5f;
+#define MAX_SECONDARY_HEAT_RATIO 0.6f;
 #define ONEWIRE_PIN             GPIO_NUM_2
 #define DRUM_MOTOR_SIGNAL_PIN   GPIO_NUM_7
 
-#define TEMPERATURE_TC_MAX      260.0f
+#define TEMPERATURE_TC_MAX      270.0f
 #define TEMPERATURE_BOARD_MAX   75.0f
 
 
