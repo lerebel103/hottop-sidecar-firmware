@@ -98,7 +98,7 @@ IF (NOT NVRAM_STORAGE_PARTITION)
     SET(NVRAM_STORAGE_PARTITION "storage" CACHE INTERNAL "NVS partition name"  FORCE)
 ENDIF()
 
-set(IDF_TARGET esp32s2)
+set(IDF_TARGET esp32s3)
 set(PROJECT_NAME hottop-sidecar-firmware)
 set(EXTRA_COMPONENT_DIRS esp-idf-lib/components)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
@@ -133,7 +133,7 @@ add_custom_command(OUTPUT
         ${CMAKE_BINARY_DIR}/${FINAL_FILE}
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/${PROJECT_NAME}.bin" "${CMAKE_BINARY_DIR}/${FINAL_FILE}"
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/*firmware.bin" "${FIRMWARE_TARGET_DIR}"
-        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/ota*.bin" "${FIRMWARE_TARGET_DIR}"
+        #COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/ota*.bin" "${FIRMWARE_TARGET_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/partition_table/*.bin" "${FIRMWARE_TARGET_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/bootloader/*.bin" "${FIRMWARE_TARGET_DIR}"
         DEPENDS app bootloader 

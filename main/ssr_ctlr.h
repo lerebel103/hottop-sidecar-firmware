@@ -1,7 +1,7 @@
 #pragma once
 
 #include <hal/gpio_types.h>
-#include <hal/rmt_types.h>
+#include <driver/rmt_types_legacy.h>
 
 struct ssr_ctrl_t {
     gpio_num_t gpio;

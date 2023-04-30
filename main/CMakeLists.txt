@@ -11,6 +11,7 @@ file(GLOB_RECURSE COMPONENT_SRCS
         sync_signal_generator.cpp
         input_power_duty.cpp
         digital_input.cpp
+        control_loop.cpp
         )
 
 

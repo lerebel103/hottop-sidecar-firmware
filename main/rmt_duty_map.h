@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include <soc/rmt_struct.h>
+#include <driver/rmt.h>
 #include "rmt_duty_map.h"
 
 #define MAINS_50HZ 50

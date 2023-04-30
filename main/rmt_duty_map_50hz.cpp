@@ -1,5 +1,5 @@
+#include <driver/rmt.h>
 #include "rmt_duty_map.h"
-#include <soc/rmt_struct.h>
 
 static const rmt_item32_t s_rmt_duty_0[] = {
         {{{ 30000, 0, 30000, 0, }}},
