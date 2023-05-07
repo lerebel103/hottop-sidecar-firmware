@@ -4,10 +4,9 @@
 #include <esp_log.h>
 #include <esp_task_wdt.h>
 #include "control_loop.h"
-#include "ssr_ctlr.h"
+#include "ssr_ctrl.h"
 #include "max31850.h"
 #include "level_shifter.h"
-#include "rmt_duty_map.h"
 #include "panel_inputs.h"
 #include "balancer.h"
 #include "input_power_duty.h"
@@ -17,22 +16,21 @@
 #define INTERVAL 2000000
 #define TAG "control"
 
-#define ONEWIRE_PIN             GPIO_NUM_2
-#define DRUM_MOTOR_SIGNAL_PIN   GPIO_NUM_7
+#define ONEWIRE_PIN                 GPIO_NUM_2
+#define DRUM_MOTOR_SIGNAL_PIN       GPIO_NUM_7
 
-#define MAX_SECONDARY_HEAT_RATIO 0.6f;
-#define TEMPERATURE_TC_MAX      270.0f
-#define TEMPERATURE_BOARD_MAX   75.0f
+#define MAX_SECONDARY_HEAT_RATIO    0.7f;
+#define TEMPERATURE_TC_MAX          270.0f
+#define TEMPERATURE_BOARD_MAX       75.0f
+#define MAINS_HZ                    MAINS_50_HZ
 
 static gptimer_handle_t gptimer;
-/* Stores the handle of the task that will be notified when the
-transmission is complete. */
 static TaskHandle_t xTaskToNotify = nullptr;
 static bool _go = false;
 
 
-static ssr_ctrl_t s_ssr1;
-static ssr_ctrl_t s_ssr2;
+static ssr_ctrl_handle_t s_ssr1 = nullptr;
+static ssr_ctrl_handle_t s_ssr2 = nullptr;
 static uint64_t s_max31850_addr = 0;
 
 
@@ -46,13 +44,14 @@ static bool _temperature_ok() {
     max31850_data_t elm_temp = max31850_read(ONEWIRE_PIN, s_max31850_addr);
     if (elm_temp.is_valid) {
         if (elm_temp.thermocouple_status == MAX31850_TC_STATUS_OK) {
-            ESP_LOGI(TAG, "Thermocouple=%fC, Board=%fC", elm_temp.thermocouple_temp, elm_temp.junction_temp);
+            ESP_LOGI(TAG, "Thermocouple=%.2fC, Board=%.2fC", elm_temp.thermocouple_temp, elm_temp.junction_temp);
 
             // We want to make sure we are under max temperatures allowed
             if (elm_temp.thermocouple_temp <= TEMPERATURE_TC_MAX && elm_temp.junction_temp < TEMPERATURE_BOARD_MAX) {
                 is_ok = true;
             } else {
-                ESP_LOGW(TAG, "Max temperature exceed Max TC=%f, Max Board=%f", TEMPERATURE_TC_MAX, TEMPERATURE_BOARD_MAX);
+                ESP_LOGW(TAG, "Max temperature exceed Max TC=%.2f, Max Board=%.2f", TEMPERATURE_TC_MAX,
+                         TEMPERATURE_BOARD_MAX);
             }
         } else {
             if (elm_temp.thermocouple_status & MAX31850_TC_STATUS_OPEN_CIRCUIT) {
@@ -77,12 +76,8 @@ static bool _temperature_ok() {
  * The main drum must be spinning.
  */
 static bool _can_control() {
-    bool is_ok =  _temperature_ok();
+    bool is_ok = _temperature_ok();
 
-    if(digital_input_get_level(DRUM_MOTOR_SIGNAL_PIN) == 0) {
-        is_ok = false;
-        ESP_LOGW(TAG, "Drum motor OFF, not applying heat");
-    }
 
     return is_ok;
 }
@@ -106,20 +101,30 @@ static bool _on_alarm_cb(gptimer_handle_t timer, const gptimer_alarm_event_data_
     return true;
 }
 
+/* Do it, one loop iteration */
 static void _control() {
     double input_duty = input_power_duty_get();
     double output_duty = 0;
     double balance = balance_read_percent();
 
+    bool motor_on = digital_input_is_on(DRUM_MOTOR_SIGNAL_PIN);
+    if (!motor_on) {
+        // Can't apply heat to stationary drum, bad news
+        input_duty = 0;
+    }
+
     if (_can_control()) {
         output_duty = input_duty * balance / 100 * MAX_SECONDARY_HEAT_RATIO;
     }
 
-    ESP_LOGI(TAG, "Input=%f, Balance: %f, Output=%f", input_duty, balance, output_duty);
-    ssr_ctlr_set_duty(s_ssr1, input_duty);
-    ssr_ctlr_set_duty(s_ssr2, output_duty);
+    ESP_LOGI(TAG, "Motor=%d, Balance: %f, Input=%f, Output=%f", motor_on, balance, input_duty, output_duty);
 
-    vTaskDelay(pdMS_TO_TICKS(1750));
+    //ssr_ctrl_set_duty(s_ssr1, input_duty);
+    //ssr_ctrl_set_duty(s_ssr2, output_duty);
+    ssr_ctrl_set_duty(s_ssr1, 50);
+    ssr_ctrl_set_duty(s_ssr2, 100);
+
+    ESP_LOGI(TAG, ".");
 }
 
 void control_loop_run() {
@@ -128,7 +133,7 @@ void control_loop_run() {
     _go = true;
 
     esp_task_wdt_config_t wdt_cfg = {
-            .timeout_ms= (int)(INTERVAL * 1.5),
+            .timeout_ms= (int) (INTERVAL * 1.5),
             .idle_core_mask = (1 << portNUM_PROCESSORS) - 1,    // Bitmask of all cores
             .trigger_panic=true
     };
@@ -142,10 +147,12 @@ void control_loop_run() {
     // We are good to go
     level_shifter_enable(true);
 
+    ssr_ctrl_power_on(s_ssr1);
+    ssr_ctrl_power_on(s_ssr2);
+
     do {
         auto ulNotificationValue = ulTaskNotifyTake(true, pdMS_TO_TICKS(INTERVAL));
         if (ulNotificationValue == 1) {
-            ESP_LOGI(TAG, "event");
             ESP_ERROR_CHECK(esp_task_wdt_reset());
             _control();
         } else {
@@ -153,8 +160,11 @@ void control_loop_run() {
         }
     } while (_go);
 
-    // We are good to go
+    ssr_ctrl_power_off(s_ssr1);
+    ssr_ctrl_power_off(s_ssr2);
     level_shifter_enable(false);
+    ssr_ctrl_del(s_ssr1);
+    ssr_ctrl_del(s_ssr2);
 }
 
 void control_loop_stop() {
@@ -177,20 +187,19 @@ void control_loop_init() {
     s_max31850_addr = found_devices.devices_address[0];
 
     // Init SSRs
-    s_ssr1 = {.gpio = GPIO_NUM_10, .channel = RMT_CHANNEL_0, .mains_hz= MAINS_50HZ, .duty = 0};
-    ssr_ctlr_init(s_ssr1);
-    s_ssr2 = {.gpio = GPIO_NUM_11, .channel = RMT_CHANNEL_1, .mains_hz= MAINS_50HZ, .duty = 0};
-    ssr_ctlr_init(s_ssr2);
+    ssr_ctrl_new({.gpio = GPIO_NUM_10, .mains_hz = MAINS_HZ}, &s_ssr1);
+    ssr_ctrl_new({.gpio = GPIO_NUM_11, .mains_hz = MAINS_HZ}, &s_ssr2);
 
     // Turn off heat
-    ssr_ctlr_set_duty(s_ssr1, 0);
-    ssr_ctlr_set_duty(s_ssr2, 0);
+    ssr_ctrl_set_duty(s_ssr1, 0);
+    ssr_ctrl_set_duty(s_ssr2, 0);
 
     // Set up timer now
     gptimer_config_t timer_config = {
             .clk_src = GPTIMER_CLK_SRC_DEFAULT,
             .direction = GPTIMER_COUNT_UP,
             .resolution_hz = 1 * 1000 * 1000, // 1MHz, 1 tick = 1us
+            .flags = {.intr_shared = 1}
     };
     ESP_ERROR_CHECK(gptimer_new_timer(&timer_config, &gptimer));
 

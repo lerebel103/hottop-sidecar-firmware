@@ -2,7 +2,7 @@
 
 #include <driver/gpio.h>
 
-bool digital_input_get_level(gpio_num_t gpio) {
+bool digital_input_is_on(gpio_num_t gpio) {
     return gpio_get_level(gpio) == 0;
 }
 

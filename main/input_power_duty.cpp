@@ -16,7 +16,7 @@ double input_power_duty_get() {
         if (gpio_get_level(s_gpio) == 0) {
             duty = 100;
         }
-    } else {
+    } else if (s_period > 0){
         duty = (s_period_on / (double)s_period) * 100;
     }
     s_last_on_start = s_on_start;
