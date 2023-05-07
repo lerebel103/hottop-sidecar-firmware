@@ -14,46 +14,85 @@
 // 1MHz
 #define RESOLUTION 1000000
 
-static square_wave_cfg_t s_cfg;
+struct square_wave_t {
+    square_wave_cfg_t cfg;
+    gptimer_handle_t gptimer;
+    SemaphoreHandle_t semaphoreHandle;
+    bool go;
+    uint64_t down_edge_time_us;
+};
 
-static SemaphoreHandle_t semaphoreHandle;
-static gptimer_handle_t gptimer = nullptr;
-static bool _go = false;
-static uint64_t _down_edge = 0;
-
-bool  _on_alarm_cb(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx) {
-    _down_edge = esp_timer_get_time();
-    gpio_set_level(s_cfg.gpio, 0);
+static bool _on_alarm_cb(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx) {
+    auto handle = (square_wave_t *) user_ctx;
+    handle->down_edge_time_us = esp_timer_get_time();
+    gpio_set_level(handle->cfg.gpio, 0);
 
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    xSemaphoreGiveFromISR(semaphoreHandle, &xHigherPriorityTaskWoken);
+    xSemaphoreGiveFromISR(handle->semaphoreHandle, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-
     return true;
 }
 
-static void _generate_edge(void*) {
+static void _generate_edge(void *data) {
+    auto handle = (square_wave_t *) data;
     do {
-        auto ret = xSemaphoreTake( semaphoreHandle, portMAX_DELAY );
+        auto ret = xSemaphoreTake(handle->semaphoreHandle, pdMS_TO_TICKS(1000));
         if (ret == pdPASS) {
-            esp_rom_delay_us(s_cfg.low_us - (esp_timer_get_time() - _down_edge));
-            gpio_set_level(s_cfg.gpio, 1);
+            esp_rom_delay_us(handle->cfg.low_us - (esp_timer_get_time() - handle->down_edge_time_us));
+            gpio_set_level(handle->cfg.gpio, 1);
         }
-    } while (_go);
+    } while (handle->go);
+
+    vSemaphoreDelete(handle->semaphoreHandle);
+    handle->semaphoreHandle = nullptr;
+
+    // Clean up self.
+    vTaskDelete(nullptr);
 }
 
-void square_wave_gen_init(square_wave_cfg_t cfg) {
-    s_cfg = cfg;
-    
+static esp_err_t square_wave_destroy(square_wave_handle_t handle) {
+    ESP_RETURN_ON_FALSE(handle, ESP_ERR_INVALID_ARG, TAG, "invalid argument");
+    if (handle->gptimer) {
+        gptimer_disable(handle->gptimer);
+        gptimer_del_timer(handle->gptimer);
+    }
+
+    // Wait for loop to finish
+    handle->go = false;
+    do { } while(handle->semaphoreHandle != nullptr);
+
+    free(handle);
+    return ESP_OK;
+}
+
+esp_err_t square_wave_gen_start(square_wave_handle_t handle) {
+    ESP_RETURN_ON_FALSE(handle, ESP_ERR_INVALID_ARG, TAG, "invalid argument");
+    return gptimer_start(handle->gptimer);
+}
+
+esp_err_t square_wave_gen_stop(square_wave_handle_t handle) {
+    ESP_RETURN_ON_FALSE(handle, ESP_ERR_INVALID_ARG, TAG, "invalid argument");
+    return gptimer_stop(handle->gptimer);
+}
+
+esp_err_t square_wave_gen_del(square_wave_handle_t handle) {
+    ESP_RETURN_ON_FALSE(handle, ESP_ERR_INVALID_ARG, TAG, "invalid argument");
+    ESP_LOGI(TAG, "Deleting wave generator on gpio %d deleted", handle->cfg.gpio);
+    // recycle memory resource
+    ESP_RETURN_ON_ERROR(square_wave_destroy(handle), TAG, "destory generator failed");
+    return ESP_OK;
+}
+
+esp_err_t square_wave_gen_new(square_wave_cfg_t cfg, square_wave_handle_t *ret_handle) {
+    esp_err_t ret = ESP_OK;
     gpio_config_t io_conf;
     io_conf.intr_type = GPIO_INTR_DISABLE;
     io_conf.mode = GPIO_MODE_OUTPUT;
     io_conf.pin_bit_mask = (
-            (1ULL << s_cfg.gpio)
+            (1ULL << cfg.gpio)
     );
     io_conf.pull_down_en = GPIO_PULLDOWN_ENABLE;
     io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
-    gpio_config(&io_conf);
 
     // Set up timer now
     gptimer_config_t timer_config = {
@@ -62,23 +101,43 @@ void square_wave_gen_init(square_wave_cfg_t cfg) {
             .resolution_hz = RESOLUTION,
             .flags = {.intr_shared = 1}
     };
-    ESP_ERROR_CHECK(gptimer_new_timer(&timer_config, &gptimer));
-
     gptimer_alarm_config_t alarm_config = {
-            .alarm_count = s_cfg.period_us,
+            .alarm_count = cfg.period_us,
             .reload_count = 0,
             .flags = {.auto_reload_on_alarm = true},
     };
-    ESP_ERROR_CHECK(gptimer_set_alarm_action(gptimer, &alarm_config));
-
     gptimer_event_callbacks_t cbs = {
             .on_alarm = _on_alarm_cb,
     };
-    ESP_ERROR_CHECK(gptimer_register_event_callbacks(gptimer, &cbs, nullptr));
-    ESP_ERROR_CHECK(gptimer_enable(gptimer));
-    ESP_ERROR_CHECK(gptimer_start(gptimer));
 
-    _go = true;
-    semaphoreHandle = xSemaphoreCreateBinary();
-    xTaskCreate(_generate_edge, "generateEdge", 1024, nullptr, 5, nullptr );
+    // Do allocation for handle and go
+    square_wave_t *handle;
+    ESP_GOTO_ON_FALSE(ret_handle, ESP_ERR_INVALID_ARG, err, TAG, "invalid argument");
+    handle = (square_wave_t *) heap_caps_calloc(1, sizeof(square_wave_t), MALLOC_CAP_DEFAULT);
+    ESP_GOTO_ON_FALSE(handle, ESP_ERR_NO_MEM, err, TAG, "no mem for square wave generator");
+
+    handle->cfg = cfg;
+
+    ESP_GOTO_ON_ERROR(gpio_config(&io_conf), err, TAG, "Failed to configure GPIO");
+    ESP_GOTO_ON_ERROR(gptimer_new_timer(&timer_config, &handle->gptimer), err, TAG, "Failed to create new timer");
+    ESP_GOTO_ON_ERROR(gptimer_set_alarm_action(handle->gptimer, &alarm_config), err, TAG, "Failed ot set alarm");
+    ESP_GOTO_ON_ERROR(gptimer_register_event_callbacks(handle->gptimer, &cbs, handle), err, TAG,
+                      "Failed to register event");
+    ESP_GOTO_ON_ERROR(gptimer_enable(handle->gptimer), err, TAG, "Could not enable timer");
+
+    // Set flag to run thread to create other edge
+    handle->go = true;
+    handle->semaphoreHandle = xSemaphoreCreateBinary();
+    xTaskCreate(_generate_edge, "generateEdge", 1024, handle, 5, nullptr);
+
+    // Good to go
+    ESP_LOGI(TAG, "Wave generator created on gpio %d deleted", handle->cfg.gpio);
+    *ret_handle = handle;
+    return ret;
+
+    err:
+    if (ret_handle) {
+        square_wave_destroy(handle);
+    }
+    return ret;
 }

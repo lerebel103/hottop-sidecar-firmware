@@ -196,13 +196,13 @@ esp_err_t ssr_ctrl_new(ssr_ctrl_config_t cfg, ssr_ctrl_handle_t *ret_handle) {
     // Store config
     handle->cfg = cfg;
     _generate_duty_map();
-    ESP_ERROR_CHECK(gpio_config(&io_conf));
+    ESP_GOTO_ON_ERROR(gpio_config(&io_conf), err, TAG, "Failed to configure GPIO");
 
     // Set up timer now
-    ESP_ERROR_CHECK(gptimer_new_timer(&timer_config, &handle->gptimer));
-    ESP_ERROR_CHECK(gptimer_set_alarm_action(handle->gptimer, &alarm_config));
-    ESP_ERROR_CHECK(gptimer_register_event_callbacks(handle->gptimer, &cbs, handle));
-    ESP_ERROR_CHECK(gptimer_enable(handle->gptimer));
+    ESP_GOTO_ON_ERROR(gptimer_new_timer(&timer_config, &handle->gptimer), err, TAG, "Failed to configure GPIO");
+    ESP_GOTO_ON_ERROR(gptimer_set_alarm_action(handle->gptimer, &alarm_config), err, TAG, "Failed to set alarm");
+    ESP_GOTO_ON_ERROR(gptimer_register_event_callbacks(handle->gptimer, &cbs, handle), err, TAG, "Failed to set callback");
+    ESP_GOTO_ON_ERROR(gptimer_enable(handle->gptimer), err, TAG, "Could not enable timer");
 
     ssr_ctrl_set_duty(handle, 0);
     handle->level = 0;
