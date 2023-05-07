@@ -11,7 +11,7 @@ extern "C" void app_main() {
     gpio_install_isr_service(0);
 
     // Here for debugging other boards or self, generates a reference 100Hz signal
-    //sync_signal_generator_init(GPIO_NUM_34);
+    sync_signal_generator_init(GPIO_NUM_34);
 
     control_loop_init();
     control_loop_run();

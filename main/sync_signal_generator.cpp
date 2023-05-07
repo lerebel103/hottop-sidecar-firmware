@@ -7,6 +7,7 @@
 #include <portmacro.h>
 #include <freertos/task.h>
 #include <esp_timer.h>
+#include <freertos/semphr.h>
 
 #define TAG "sync_signal"
 
@@ -16,9 +17,9 @@
 #define DOWN_EDGE_WIDTH_US 480
 
 
+static SemaphoreHandle_t semaphoreHandle;
 static gptimer_handle_t gptimer = nullptr;
 static gpio_num_t s_gpio;
-static TaskHandle_t xTaskToNotify = nullptr;
 static bool _go = false;
 static uint64_t _down_edge = 0;
 
@@ -27,8 +28,7 @@ bool  _on_alarm_cb(gptimer_handle_t timer, const gptimer_alarm_event_data_t *eda
     gpio_set_level(s_gpio, 0);
 
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    configASSERT(xTaskToNotify != NULL);
-    vTaskNotifyGiveFromISR(xTaskToNotify, &xHigherPriorityTaskWoken);
+    xSemaphoreGiveFromISR(semaphoreHandle, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 
     return true;
@@ -36,8 +36,8 @@ bool  _on_alarm_cb(gptimer_handle_t timer, const gptimer_alarm_event_data_t *eda
 
 static void _generate_edge(void*) {
     do {
-        auto ulNotificationValue = ulTaskNotifyTake(true, 10000);
-        if (ulNotificationValue == 1) {
+        auto ret = xSemaphoreTake( semaphoreHandle, portMAX_DELAY );
+        if (ret == pdPASS) {
             esp_rom_delay_us(DOWN_EDGE_WIDTH_US - (esp_timer_get_time() - _down_edge));
             gpio_set_level(s_gpio, 1);
         }
@@ -80,5 +80,6 @@ void sync_signal_generator_init(gpio_num_t gpio) {
     ESP_ERROR_CHECK(gptimer_start(gptimer));
 
     _go = true;
-    xTaskCreate(_generate_edge, "generateEdge", 672, nullptr, 5, &xTaskToNotify );
+    semaphoreHandle = xSemaphoreCreateBinary();
+    xTaskCreate(_generate_edge, "generateEdge", 1024, nullptr, 5, nullptr );
 }

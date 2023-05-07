@@ -3,6 +3,7 @@
 #include <driver/gptimer.h>
 #include <esp_log.h>
 #include <esp_task_wdt.h>
+#include <freertos/semphr.h>
 #include "control_loop.h"
 #include "ssr_ctrl.h"
 #include "max31850.h"
@@ -24,14 +25,15 @@
 #define TEMPERATURE_BOARD_MAX       75.0f
 #define MAINS_HZ                    MAINS_50_HZ
 
+static SemaphoreHandle_t semaphoreHandle;
 static gptimer_handle_t gptimer;
-static TaskHandle_t xTaskToNotify = nullptr;
 static bool _go = false;
 
 
 static ssr_ctrl_handle_t s_ssr1 = nullptr;
 static ssr_ctrl_handle_t s_ssr2 = nullptr;
 static uint64_t s_max31850_addr = 0;
+
 
 
 /*
@@ -84,19 +86,7 @@ static bool _can_control() {
 
 static bool _on_alarm_cb(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx) {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-
-    /* At this point xTaskToNotify should not be NULL as
-    a transmission was in progress. */
-    configASSERT(xTaskToNotify != NULL);
-
-    /* Notify the task that the transmission is complete. */
-    vTaskNotifyGiveFromISR(xTaskToNotify, &xHigherPriorityTaskWoken);
-
-    /* If xHigherPriorityTaskWoken is now set to pdTRUE then a
-    context switch should be performed to ensure the interrupt
-    returns directly to the highest priority task.  The macro used
-    for this purpose is dependent on the port in use and may be
-    called portEND_SWITCHING_ISR(). */
+    xSemaphoreGiveFromISR(semaphoreHandle, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     return true;
 }
@@ -119,16 +109,16 @@ static void _control() {
 
     ESP_LOGI(TAG, "Motor=%d, Balance: %f, Input=%f, Output=%f", motor_on, balance, input_duty, output_duty);
 
-    //ssr_ctrl_set_duty(s_ssr1, input_duty);
-    //ssr_ctrl_set_duty(s_ssr2, output_duty);
-    ssr_ctrl_set_duty(s_ssr1, 50);
-    ssr_ctrl_set_duty(s_ssr2, 100);
+    ssr_ctrl_set_duty(s_ssr1, input_duty);
+    ssr_ctrl_set_duty(s_ssr2, output_duty);
 
     ESP_LOGI(TAG, ".");
 }
 
 void control_loop_run() {
-    xTaskToNotify = xTaskGetCurrentTaskHandle();
+    semaphoreHandle = xSemaphoreCreateBinary();
+
+    TaskHandle_t  xTaskToNotify = xTaskGetCurrentTaskHandle();
     ESP_ERROR_CHECK(gptimer_start(gptimer));
     _go = true;
 
@@ -151,13 +141,9 @@ void control_loop_run() {
     ssr_ctrl_power_on(s_ssr2);
 
     do {
-        auto ulNotificationValue = ulTaskNotifyTake(true, pdMS_TO_TICKS(INTERVAL));
-        if (ulNotificationValue == 1) {
-            ESP_ERROR_CHECK(esp_task_wdt_reset());
-            _control();
-        } else {
-            ESP_LOGE(TAG, "Hardware timer timeout.");
-        }
+        while( xSemaphoreTake( semaphoreHandle, portMAX_DELAY ) != pdPASS )
+        ESP_ERROR_CHECK(esp_task_wdt_reset());
+        _control();
     } while (_go);
 
     ssr_ctrl_power_off(s_ssr1);
