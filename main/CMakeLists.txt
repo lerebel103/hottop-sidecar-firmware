@@ -3,7 +3,6 @@ file(GLOB_RECURSE COMPONENT_SRCS
         level_shifter.cpp
         panel_inputs.cpp
         max31850.cpp
-        ssr_ctrl.cpp
         balancer.cpp
         sync_signal_generator.cpp
         input_power_duty.cpp

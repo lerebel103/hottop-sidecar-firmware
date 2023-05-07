@@ -10,6 +10,12 @@
 
 #define MIN_DUTY    1
 #define MAX_DUTY    99
+
+/*
+ * Specifies the minimum number of periods acceptable for either on or off signals.
+ * That is, if mains is 50Hz and this is set to 2, we are saying that the controller will output
+ * an ON or OFF signal that will last at least 2 or greater periods, e.g. 25Hz
+ */
 #define MIN_PERIODS 2
 
 struct duty_packets_t {
@@ -61,20 +67,27 @@ static bool _on_ssr_alarm_cb(gptimer_handle_t timer, const gptimer_alarm_event_d
 /*
  * Turns power off immediately to ssr
  */
-void ssr_ctrl_power_off(ssr_ctrl_handle_t inst) {
+esp_err_t ssr_ctrl_power_off(ssr_ctrl_handle_t inst) {
+    ESP_RETURN_ON_FALSE(inst, ESP_ERR_INVALID_ARG, TAG, "invalid argument");
     // Turn off RMT and force pin to zero as safety
     ESP_ERROR_CHECK(gptimer_stop(inst->gptimer));
     ssr_ctrl_set_duty(inst, 0);
     ESP_ERROR_CHECK(gpio_set_level(inst->cfg.gpio, 0));
     ESP_LOGI(TAG, "SSR power OFF for gpio %d", inst->cfg.gpio);
+
+    return ESP_OK;
 }
 
-void ssr_ctrl_power_on(ssr_ctrl_handle_t inst) {
+esp_err_t ssr_ctrl_power_on(ssr_ctrl_handle_t inst) {
+    ESP_RETURN_ON_FALSE(inst, ESP_ERR_INVALID_ARG, TAG, "invalid argument");
     ESP_LOGI(TAG, "SSR power ON for gpio %d", inst->cfg.gpio);
     ESP_ERROR_CHECK(gptimer_start(inst->gptimer));
+
+    return ESP_OK;
 }
 
-void ssr_ctrl_set_duty(ssr_ctrl_handle_t inst, int duty) {
+esp_err_t ssr_ctrl_set_duty(ssr_ctrl_handle_t inst, int duty) {
+    ESP_RETURN_ON_FALSE(inst, ESP_ERR_INVALID_ARG, TAG, "invalid argument");
     if (duty > 100) {
         duty = 100;
     } else if (duty < 0) {
@@ -82,10 +95,13 @@ void ssr_ctrl_set_duty(ssr_ctrl_handle_t inst, int duty) {
     }
 
     inst->duty = duty;
+    return ESP_OK;
 }
 
-int ssr_ctrl_get_duty(ssr_ctrl_handle_t inst) {
-    return inst->duty;
+esp_err_t ssr_ctrl_get_duty(ssr_ctrl_handle_t inst, int& duty) {
+    ESP_RETURN_ON_FALSE(inst, ESP_ERR_INVALID_ARG, TAG, "invalid argument");
+    duty = inst->duty;
+    return ESP_OK;
 }
 
 /* Generates an indexed array of duty for low and high cycle times */
@@ -122,6 +138,7 @@ void _generate_duty_map() {
 }
 
 static esp_err_t ssr_ctrl_destroy(ssr_ctrl_handle_t handle) {
+    ESP_RETURN_ON_FALSE(handle, ESP_ERR_INVALID_ARG, TAG, "invalid argument");
     if (handle->gptimer) {
         gptimer_disable(handle->gptimer);
         gptimer_del_timer(handle->gptimer);

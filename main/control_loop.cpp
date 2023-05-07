@@ -5,7 +5,7 @@
 #include <esp_task_wdt.h>
 #include <freertos/semphr.h>
 #include "control_loop.h"
-#include "ssr_ctrl.h"
+#include "../components/ssr_ctrl/src/ssr_ctrl.h"
 #include "max31850.h"
 #include "level_shifter.h"
 #include "panel_inputs.h"
