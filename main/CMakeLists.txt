@@ -4,7 +4,6 @@ file(GLOB_RECURSE COMPONENT_SRCS
         panel_inputs.cpp
         max31850.cpp
         balancer.cpp
-        sync_signal_generator.cpp
         input_power_duty.cpp
         digital_input.cpp
         control_loop.cpp

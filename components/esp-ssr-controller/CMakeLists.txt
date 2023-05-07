@@ -9,6 +9,7 @@ set(COMPONENT_REQUIRES
         )
 
 set(COMPONENT_ADD_INCLUDEDIRS
+        src/
         )
 
 idf_component_register(
