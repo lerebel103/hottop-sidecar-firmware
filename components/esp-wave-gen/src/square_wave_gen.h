@@ -1,7 +1,6 @@
 #pragma once
 
 #include <hal/gpio_types.h>
-#include <hal/rmt_types.h>
 
 /**
  * Handle for an instance of wave generator

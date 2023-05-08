@@ -12,34 +12,34 @@
 #define MAX31850_NUM_DEVICES_MAX 8
 
 struct max3185_devices_t {
-    uint64_t devices_address[MAX31850_NUM_DEVICES_MAX];
-    uint8_t devices_address_length;
-} ;
+  uint64_t devices_address[MAX31850_NUM_DEVICES_MAX];
+  uint8_t devices_address_length;
+};
 
 struct max31850_data_t {
 
-    /**
-     * Tells if a read was successful and no CRC errors were encountered.
-     * The temperature values are undefined when this flag is false.
-     */
-    bool is_valid;
+  /**
+   * Tells if a read was successful and no CRC errors were encountered.
+   * The temperature values are undefined when this flag is false.
+   */
+  bool is_valid;
 
-    /**
-     * Bitfield flag representing the status of the thermocouple.
-     * MAX31850_TC_STATUS_OK returned when operating correctly.
-     * See MAX31850_TC_STATUS_*
-     */
-    uint8_t thermocouple_status;
+  /**
+   * Bitfield flag representing the status of the thermocouple.
+   * MAX31850_TC_STATUS_OK returned when operating correctly.
+   * See MAX31850_TC_STATUS_*
+   */
+  uint8_t thermocouple_status;
 
-    /**
-     * Temperature read from the connected thermocouple.
-     */
-    float thermocouple_temp;
+  /**
+   * Temperature read from the connected thermocouple.
+   */
+  float thermocouple_temp;
 
-    /**
-     * Temperature read from the onboard sensor, representing the junction temperature.
-     */
-    float junction_temp;
+  /**
+   * Temperature read from the onboard sensor, representing the junction temperature.
+   */
+  float junction_temp;
 };
 
 /**

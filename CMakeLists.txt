@@ -95,8 +95,8 @@ SET(BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE INTERNAL "" FORCE)
 
 
 IF (NOT NVRAM_STORAGE_PARTITION)
-    SET(NVRAM_STORAGE_PARTITION "storage" CACHE INTERNAL "NVS partition name"  FORCE)
-ENDIF()
+    SET(NVRAM_STORAGE_PARTITION "storage" CACHE INTERNAL "NVS partition name" FORCE)
+ENDIF ()
 
 set(IDF_TARGET esp32s3)
 set(PROJECT_NAME hottop-sidecar-firmware)
@@ -115,10 +115,10 @@ SET(CMAKE_C_STANDARD -std=c11)
 # Set compile flags to give us something that will provide good perfomance
 STRING(TOLOWER ${CMAKE_BUILD_TYPE} LOWERCASE_CMAKE_BUILD_TYPE)
 IF (LOWERCASE_CMAKE_BUILD_TYPE MATCHES debug)
-    SET(CMAKE_C_FLAGS   "-O0 -ffast-math ${CMAKE_C_FLAGS}")
+    SET(CMAKE_C_FLAGS "-O0 -ffast-math ${CMAKE_C_FLAGS}")
     SET(CMAKE_CXX_FLAGS "-O0 -ffast-math ${CMAKE_CXX_FLAGS}")
 ELSEIF (LOWERCASE_CMAKE_BUILD_TYPE MATCHES release)
-    SET(CMAKE_C_FLAGS   "-O3 -ffast-math ${CMAKE_C_FLAGS}")
+    SET(CMAKE_C_FLAGS "-O3 -ffast-math ${CMAKE_C_FLAGS}")
     SET(CMAKE_CXX_FLAGS "-O3 -ffast-math ${CMAKE_CXX_FLAGS}")
 ELSE ()
     MESSAGE(FATAL_ERROR "Build type '${CMAKE_BUILD_TYPE}' is unknown")
@@ -136,7 +136,7 @@ add_custom_command(OUTPUT
         #COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/ota*.bin" "${FIRMWARE_TARGET_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/partition_table/*.bin" "${FIRMWARE_TARGET_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/bootloader/*.bin" "${FIRMWARE_TARGET_DIR}"
-        DEPENDS app bootloader 
+        DEPENDS app bootloader
         )
 
 # Create target which consume the command via DEPENDS.

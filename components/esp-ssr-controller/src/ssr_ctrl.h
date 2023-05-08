@@ -5,8 +5,8 @@
 #include <esp_err.h>
 
 enum main_hertz_t {
-    MAINS_50_HZ = 50,
-    MAINS_60_HZ = 60,
+  MAINS_50_HZ = 50,
+  MAINS_60_HZ = 60,
 };
 
 /**
@@ -15,15 +15,15 @@ enum main_hertz_t {
 typedef struct ssr_ctrl_t *ssr_ctrl_handle_t;
 
 struct ssr_ctrl_config_t {
-    /**
-     * GPIO to which this controller will output a signal
-     */
-    gpio_num_t gpio;
+  /**
+   * GPIO to which this controller will output a signal
+   */
+  gpio_num_t gpio;
 
-    /**
-     * Desired modulation frequency, e.g. which mains frequency is required
-     */
-    main_hertz_t mains_hz;
+  /**
+   * Desired modulation frequency, e.g. which mains frequency is required
+   */
+  main_hertz_t mains_hz;
 };
 
 /**
@@ -38,7 +38,7 @@ esp_err_t ssr_ctrl_set_duty(ssr_ctrl_handle_t handle, int duty);
  * @param handle controller instance
  * @return Integer in the range of [0, 100]
  */
-esp_err_t ssr_ctrl_get_duty(ssr_ctrl_handle_t handle, int& duty);
+esp_err_t ssr_ctrl_get_duty(ssr_ctrl_handle_t handle, int &duty);
 
 /**
  * Powers off the controller and sets output duty to zero.
@@ -57,7 +57,7 @@ esp_err_t ssr_ctrl_power_on(ssr_ctrl_handle_t handle);
  * @param cfg Configuration set desired
  * @param ret_handle Allocates a handle and returns a new instance
  */
-esp_err_t ssr_ctrl_new(ssr_ctrl_config_t cfg, ssr_ctrl_handle_t* ret_handle);
+esp_err_t ssr_ctrl_new(ssr_ctrl_config_t cfg, ssr_ctrl_handle_t *ret_handle);
 
 /**
  * Frees previously allocated resources.

@@ -2,9 +2,8 @@ file(GLOB_RECURSE COMPONENT_SRCS
         main.cpp
         level_shifter.cpp
         panel_inputs.cpp
-        max31850.cpp
         balancer.cpp
-        input_power_duty.cpp
+        ../components/esp-input-pwm-duty/src/input_pwm_duty.cpp
         digital_input.cpp
         control_loop.cpp
         )
