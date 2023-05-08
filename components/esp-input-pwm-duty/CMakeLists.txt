@@ -6,7 +6,7 @@ set(COMPONENT_SRCDIRS
 
 set(COMPONENT_REQUIRES
         driver
-        lib8tion
+        esp_timer
         )
 
 set(COMPONENT_ADD_INCLUDEDIRS

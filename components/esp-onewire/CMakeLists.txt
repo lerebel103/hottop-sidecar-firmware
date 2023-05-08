@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 3.5)
-
 set(COMPONENT_SRCDIRS
         src/
         )
@@ -9,7 +7,8 @@ set(COMPONENT_ADD_INCLUDEDIRS
         )
 
 set(COMPONENT_REQUIRES
-        esp-onewire
+        freertos
+        driver
         )
 
 idf_component_register(

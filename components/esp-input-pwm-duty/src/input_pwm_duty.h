@@ -43,7 +43,11 @@ struct input_pwm_cfg_t {
 };
 
 /**
- * Returns the last calculated PWM duty, for the specified interval
+ * Returns the last calculated PWM duty
+ *
+ * @param handle Handle of the PWM instance that will be allocated.
+ * @param duty returned duty
+ * @return ESP_OK when all is well
  */
 esp_err_t input_pwm_get_duty(input_pwm_handle_t handle, uint8_t &duty);
 
@@ -51,8 +55,14 @@ esp_err_t input_pwm_get_duty(input_pwm_handle_t handle, uint8_t &duty);
  * Reads the main power PWM signal via interrupt, to work out an effective duty.
  * Note that the max period of the input signal must be less than 5s.
  *
- * @param gpio
+ * @param cfg Configuration desired for this instance
+ * @param handle Handle of the PWM instance that will be allocated.
  */
 esp_err_t input_pwm_new(input_pwm_cfg_t cfg, input_pwm_handle_t *ret_handle);
 
+/**
+ * Frees all resources.
+ * @param handle Handle of the PWM instance that was previously allocated.
+ * @return ESP_OK on successful completion
+ */
 esp_err_t input_pwm_del(input_pwm_handle_t handle);

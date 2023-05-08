@@ -100,7 +100,6 @@ ENDIF ()
 
 set(IDF_TARGET esp32s3)
 set(PROJECT_NAME hottop-sidecar-firmware)
-set(EXTRA_COMPONENT_DIRS esp-idf-lib/components)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(${PROJECT_NAME} VERSION ${PROJECT_VERSION})
 
