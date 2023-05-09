@@ -45,5 +45,3 @@ The above produces the following output:
 
 ![100Hz square wave](media/SquareWave-100Hz.jpeg)
 
-A word of caution, this code was written in my spare time and for my own personal projects, it is far from perfect. 
-Please feel free to use it and leave us a note if you find any issues.
