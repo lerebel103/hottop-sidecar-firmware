@@ -25,8 +25,8 @@ struct input_pwm_t {
 static void _handle_isr(void *ctx) {
   auto handle = (input_pwm_t *) ctx;
 
-  // Here we track the first down edge timing and time this state.
-  // Then we look for the next down edge again which gives us a period. The ratio of the two will later
+  // Here we track the first edge timing and time this state.
+  // Then we look for the following opposite edge which gives us a period. The ratio of the two will later
   // give us a duty. This can't be calculated here in ISR (float operation)
   if (gpio_get_level(handle->cfg.gpio) == (handle->cfg.edge_type == PWM_INPUT_UP_EDGE_ON ? 1 : 0)) {
     uint64_t on_start = esp_timer_get_time();

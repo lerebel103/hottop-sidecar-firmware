@@ -9,7 +9,7 @@ This project is written as an `esp-idf` component and can be pulled into your ow
 ## Example
 ```c
   // Handle for instance
-  input_pwm_handle_t s_pwm_in;
+  input_pwm_handle_t pwm_in;
 
   // Example configuration to read PWM from GPIO6
   input_pwm_cfg_t cfg = {
