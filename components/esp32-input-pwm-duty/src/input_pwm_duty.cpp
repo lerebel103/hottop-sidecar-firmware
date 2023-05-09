@@ -47,7 +47,7 @@ static void _handle_isr(void *ctx) {
 static void _calculate_duty(void *data) {
   auto handle = (input_pwm_t *) data;
   do {
-    auto ret = xSemaphoreTake(handle->semaphoreHandle, pdMS_TO_TICKS(handle->cfg.period_ms));
+    auto ret = xSemaphoreTake(handle->semaphoreHandle, pdMS_TO_TICKS(handle->cfg.period_us / 1000));
     if (ret == pdPASS) {
       handle->duty = (uint8_t) round(((double) handle->period_on / (double) handle->period) * 100);
     } else {

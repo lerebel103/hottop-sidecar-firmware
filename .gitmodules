@@ -1,3 +1,6 @@
 [submodule "components/esp32-wave-gen"]
 	path = components/esp32-wave-gen
 	url = https://github.com/lerebel103/esp32-wave-gen.git
+[submodule "components/esp32-input-pwm-duty"]
+	path = components/esp32-input-pwm-duty
+	url = https://github.com/lerebel103/esp32-input-pwm-duty.git

@@ -10,7 +10,7 @@
 #include "level_shifter.h"
 #include "panel_inputs.h"
 #include "balancer.h"
-#include "../components/esp-input-pwm-duty/src/input_pwm_duty.h"
+#include "input_pwm_duty.h"
 #include "digital_input.h"
 
 // Interval in MHz
@@ -111,7 +111,7 @@ static void _control() {
   }
 
   if (_can_control()) {
-    output_duty = (uint8_t) (input_duty * balance / 100.0 * MAX_SECONDARY_HEAT_RATIO);
+    output_duty = (uint8_t)(input_duty * balance / 100.0 * MAX_SECONDARY_HEAT_RATIO);
   }
 
   ESP_LOGI(TAG, "Motor=%d, Balance: %f, Input=%d, Output=%d, Fan=%d",
@@ -181,8 +181,8 @@ void control_loop_init() {
   s_max31850_addr = found_devices.devices_address[0];
 
   // Init reading inbound PWMs, noting heat is 2s period on later hottop models
-  input_pwm_new({.gpio=HEAT_SIGNAL_PIN, .edge_type=PWM_INPUT_DOWN_EDGE_ON, .period_ms=2100}, &s_heat_pwm_in);
-  input_pwm_new({.gpio=FAN_SIGNAL_PIN, .edge_type=PWM_INPUT_DOWN_EDGE_ON, .period_ms=100}, &s_fan_pwm_in);
+  input_pwm_new({.gpio=HEAT_SIGNAL_PIN, .edge_type=PWM_INPUT_DOWN_EDGE_ON, .period_us=2100000}, &s_heat_pwm_in);
+  input_pwm_new({.gpio=FAN_SIGNAL_PIN, .edge_type=PWM_INPUT_DOWN_EDGE_ON, .period_us=100000}, &s_fan_pwm_in);
 
   // Init SSRs
   ssr_ctrl_new({.gpio = SSR1_PIN, .mains_hz = MAINS_HZ}, &s_ssr1);
