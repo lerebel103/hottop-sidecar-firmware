@@ -9,7 +9,7 @@ set(COMPONENT_ADD_INCLUDEDIRS
         )
 
 set(COMPONENT_REQUIRES
-        esp-onewire
+        esp32-onewire
         )
 
 idf_component_register(
