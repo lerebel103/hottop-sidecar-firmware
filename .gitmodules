@@ -7,3 +7,6 @@
 [submodule "components/esp32-onewire"]
 	path = components/esp32-onewire
 	url = https://github.com/lerebel103/esp32-onewire.git
+[submodule "components/esp32-max31850"]
+	path = components/esp32-max31850
+	url = https://github.com/lerebel103/esp32-max31850.git
