@@ -3,9 +3,10 @@ file(GLOB_RECURSE COMPONENT_SRCS
         level_shifter.cpp
         panel_inputs.cpp
         balancer.cpp
-        ../components/esp-input-pwm-duty/src/input_pwm_duty.cpp
+        input_pwm_duty.cpp
         digital_input.cpp
         control_loop.cpp
+        wifi_connect.cpp
         )
 
 
