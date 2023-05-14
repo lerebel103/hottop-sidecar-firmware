@@ -87,7 +87,7 @@ static bool _can_control() {
   return is_ok;
 }
 
-static bool _on_alarm_cb(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx) {
+static IRAM_ATTR bool _on_alarm_cb(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx) {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
   xSemaphoreGiveFromISR(semaphoreHandle, &xHigherPriorityTaskWoken);
   portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
@@ -114,7 +114,7 @@ static void _control() {
     output_duty = (uint8_t)(input_duty * balance / 100.0 * MAX_SECONDARY_HEAT_RATIO);
   }
 
-  ESP_LOGI(TAG, "Motor=%d, Balance: %f, Input=%d, Output=%d, Fan=%d",
+  ESP_LOGI(TAG, "Motor=%d, Balance: %.1f, Input=%d, Output=%d, Fan=%d",
            motor_on, balance, input_duty, output_duty, fan_duty);
 
   ssr_ctrl_set_duty(s_ssr1, input_duty);
