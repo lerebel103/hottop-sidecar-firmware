@@ -120,6 +120,7 @@ static void _control() {
   ssr_ctrl_set_duty(s_ssr1, input_duty);
   ssr_ctrl_set_duty(s_ssr2, output_duty);
 
+  ESP_LOGI(TAG, "Memory heap: %lu, min: %lu", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
   ESP_LOGI(TAG, ".");
 }
 

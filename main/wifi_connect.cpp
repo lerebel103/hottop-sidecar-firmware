@@ -2,6 +2,8 @@
 #include <freertos/task.h>
 #include <freertos/event_groups.h>
 #include "wifi_connect.h"
+#include "qrcode.h"
+#include "sntp.h"
 #include <esp_netif.h>
 #include <wifi_provisioning/manager.h>
 #include <esp_wifi_default.h>
@@ -18,8 +20,8 @@
 #define PROV_TRANSPORT_BLE      "ble"
 #define QRCODE_BASE_URL         "https://espressif.github.io/esp-jumpstart/qrcode.html"
 
+EventGroupHandle_t comms_event_group;
 
-static EventGroupHandle_t wifi_event_group;
 static esp_netif_t *s_netif_sta;
 
 /* Event handler for catching system events */
@@ -36,9 +38,7 @@ static void event_handler(void *arg, esp_event_base_t event_base,
       case WIFI_PROV_CRED_RECV: {
         wifi_sta_config_t *wifi_sta_cfg = (wifi_sta_config_t *) event_data;
         ESP_LOGI(TAG, "Received Wi-Fi credentials"
-                      "\n\tSSID     : %s\n\tPassword : %s",
-                 (const char *) wifi_sta_cfg->ssid,
-                 (const char *) wifi_sta_cfg->password);
+                      "\n\tSSID     : %s\n", (const char *) wifi_sta_cfg->ssid);
         break;
       }
       case WIFI_PROV_CRED_FAIL: {
@@ -76,7 +76,10 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
     ESP_LOGI(TAG, "Connected with IP Address:" IPSTR, IP2STR(&event->ip_info.ip));
     /* Signal main application to continue execution */
-    xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_EVENT);
+    xEventGroupSetBits(comms_event_group, WIFI_CONNECTED_EVENT);
+
+    // Start SNTP
+    sntp_sync_init();
   } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
     ESP_LOGI(TAG, "Disconnected. Connecting to the AP again...");
     esp_wifi_connect();
@@ -125,33 +128,19 @@ static void wifi_prov_print_qr(const char *name, const char *username, const cha
   }
   char payload[150] = {0};
   if (pop) {
-#if CONFIG_EXAMPLE_PROV_SECURITY_VERSION_1
     snprintf(payload, sizeof(payload), "{\"ver\":\"%s\",\"name\":\"%s\"" \
                     ",\"pop\":\"%s\",\"transport\":\"%s\"}",
                     PROV_QR_VERSION, name, pop, transport);
-#elif CONFIG_EXAMPLE_PROV_SECURITY_VERSION_2
-    snprintf(payload, sizeof(payload), "{\"ver\":\"%s\",\"name\":\"%s\"" \
-                    ",\"username\":\"%s\",\"pop\":\"%s\",\"transport\":\"%s\"}",
-                    PROV_QR_VERSION, name, username, pop, transport);
-#endif
-  } else {
-    snprintf(payload, sizeof(payload), "{\"ver\":\"%s\",\"name\":\"%s\"" \
-                    ",\"transport\":\"%s\"}",
-             PROV_QR_VERSION, name, transport);
   }
-#ifdef CONFIG_EXAMPLE_PROV_SHOW_QR
   ESP_LOGI(TAG, "Scan this QR code from the provisioning application for Provisioning.");
     esp_qrcode_config_t cfg = ESP_QRCODE_CONFIG_DEFAULT();
     esp_qrcode_generate(&cfg, payload);
-#endif /* CONFIG_APP_WIFI_PROV_SHOW_QR */
-  ESP_LOGI(TAG, "If QR code is not visible, copy paste the below URL in a browser.\n%s?data=%s", QRCODE_BASE_URL,
-           payload);
 }
 
 void wifi_connect_init() {
   /* Initialize TCP/IP */
   ESP_ERROR_CHECK(esp_netif_init());
-  wifi_event_group = xEventGroupCreate();
+  comms_event_group = xEventGroupCreate();
 
   /* Register our event handler for Wi-Fi, IP and Provisioning related events */
   ESP_ERROR_CHECK(esp_event_handler_register(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
@@ -162,7 +151,7 @@ void wifi_connect_init() {
   s_netif_sta = esp_netif_create_default_wifi_sta();
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-  
+
   /* Configuration for the provisioning manager */
   wifi_prov_mgr_config_t config = {
       .scheme = wifi_prov_scheme_ble,
@@ -251,6 +240,15 @@ void wifi_connect_init() {
      */
     wifi_prov_mgr_endpoint_register("custom-data", custom_prov_data_handler, NULL);
     wifi_prov_print_qr(service_name, username, pop, PROV_TRANSPORT_BLE);
+
+    // Wait for service to complete
+    wifi_prov_mgr_wait();
+
+    // Finally de-initialize the manager
+    wifi_prov_mgr_deinit();
+
+    // Do a restart, the simplest approach
+    esp_restart();
   } else {
     // ALready provisioned
     ESP_LOGI(TAG, "Already provisioned, starting Wi-Fi STA");
@@ -261,5 +259,6 @@ void wifi_connect_init() {
 
     /* Start Wi-Fi station */
     wifi_init_sta();
+
   }
 }

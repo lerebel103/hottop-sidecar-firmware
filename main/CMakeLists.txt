@@ -7,6 +7,7 @@ file(GLOB_RECURSE COMPONENT_SRCS
         digital_input.cpp
         control_loop.cpp
         wifi_connect.cpp
+        sntp.cpp
         )
 
 
