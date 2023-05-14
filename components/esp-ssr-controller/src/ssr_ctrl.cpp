@@ -5,6 +5,7 @@
 #include <driver/gptimer.h>
 #include <esp_check.h>
 #include <esp_heap_caps.h>
+#include <esp_attr.h>
 
 #define TAG "SSR"
 
@@ -36,7 +37,7 @@ struct ssr_ctrl_t {
  */
 static duty_packets_t _duty_map[MAX_DUTY - MIN_DUTY + 1];
 
-static bool _on_ssr_alarm_cb(gptimer_handle_t, const gptimer_alarm_event_data_t *, void *user_ctx) {
+static IRAM_ATTR bool _on_ssr_alarm_cb(gptimer_handle_t, const gptimer_alarm_event_data_t *, void *user_ctx) {
   auto inst = (ssr_ctrl_handle_t) (user_ctx);
 
   if (inst->duty <= 0) {
