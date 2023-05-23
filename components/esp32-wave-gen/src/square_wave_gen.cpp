@@ -21,7 +21,7 @@ struct square_wave_t {
   uint64_t down_edge_time_us;
 };
 
-static bool _on_alarm_cb(gptimer_handle_t, const gptimer_alarm_event_data_t *, void *user_ctx) {
+static bool IRAM_ATTR _on_alarm_cb(gptimer_handle_t, const gptimer_alarm_event_data_t *, void *user_ctx) {
   auto handle = (square_wave_t *) user_ctx;
   handle->down_edge_time_us = esp_timer_get_time();
   gpio_set_level(handle->cfg.gpio, 0);

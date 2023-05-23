@@ -22,7 +22,7 @@ struct input_pwm_t {
   SemaphoreHandle_t semaphoreHandle;
 };
 
-static void _handle_isr(void *ctx) {
+static void IRAM_ATTR _handle_isr(void *ctx) {
   auto handle = (input_pwm_t *) ctx;
 
   // Here we track the first edge timing and time this state.
@@ -48,7 +48,7 @@ static void _calculate_duty(void *data) {
   auto handle = (input_pwm_t *) data;
   do {
     auto ret = xSemaphoreTake(handle->semaphoreHandle, pdMS_TO_TICKS(handle->cfg.period_us / 1000));
-    if (ret == pdPASS) {
+    if (ret == pdPASS && handle->period > handle->period_on) {
       handle->duty = (uint8_t) round(((double) handle->period_on / (double) handle->period) * 100);
     } else {
       // We've timed out and received no edges at all, so pick up the current GPIO state
