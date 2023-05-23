@@ -8,6 +8,9 @@ file(GLOB_RECURSE COMPONENT_SRCS
         control_loop.cpp
         wifi_connect.cpp
         sntp.cpp
+        nvs.cpp
+        mqtt.cpp
+        mqtt_mutual_auth.cpp
         )
 
 

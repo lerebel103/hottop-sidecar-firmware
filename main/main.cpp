@@ -1,10 +1,11 @@
 #include <esp_log.h>
 #include <driver/gpio.h>
-#include <nvs_flash.h>
 #include <esp_event.h>
 #include "control_loop.h"
 #include "square_wave_gen.h"
 #include "wifi_connect.h"
+#include "nvs.h"
+#include "mqtt.h"
 
 #define TAG  "main"
 
@@ -26,19 +27,14 @@ void _generate_zero_signal() {
 }
 
 extern "C" void app_main() {
-  /* Initialize NVS partition */
-  esp_err_t ret = nvs_flash_init();
-  if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-    /* NVS partition was truncated
-     * and needs to be erased */
-    ESP_ERROR_CHECK(nvs_flash_erase());
+  nvs_init();
 
-    /* Retry nvs_flash_init */
-    ESP_ERROR_CHECK(nvs_flash_init());
-  }
   /* Initialize the event loop */
   ESP_ERROR_CHECK(esp_event_loop_create_default());
+
   wifi_connect_init();
+  mqtt_init();
+
 
   ESP_LOGI(TAG, "Starting heater sidecar");
   gpio_install_isr_service(0);
@@ -47,3 +43,4 @@ extern "C" void app_main() {
   control_loop_init();
   control_loop_run();
 }
+

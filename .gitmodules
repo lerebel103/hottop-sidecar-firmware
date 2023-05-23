@@ -10,3 +10,6 @@
 [submodule "components/esp32-max31850"]
 	path = components/esp32-max31850
 	url = https://github.com/lerebel103/esp32-max31850.git
+[submodule "components/esp-aws-iot"]
+	path = components/esp-aws-iot
+	url = https://github.com/espressif/esp-aws-iot.git

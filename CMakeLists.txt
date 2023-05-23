@@ -98,6 +98,8 @@ IF (NOT NVRAM_STORAGE_PARTITION)
     SET(NVRAM_STORAGE_PARTITION "storage" CACHE INTERNAL "NVS partition name" FORCE)
 ENDIF ()
 
+set(EXTRA_COMPONENT_DIRS components/esp-aws-iot/libraries components/esp-aws-iot/libraries/common/)
+
 set(IDF_TARGET esp32s3)
 set(PROJECT_NAME hottop-sidecar-firmware)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
