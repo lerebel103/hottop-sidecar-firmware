@@ -1,8 +1,8 @@
-#include "sntp.h"
-
 #include <freertos/FreeRTOS.h>
-#include <freertos/event_groups.h>
 #include <freertos/task.h>
+#include <freertos/event_groups.h>
+
+#include "sntp.h"
 #include <esp_system.h>
 #include <esp_wifi.h>
 #include <esp_event.h>
@@ -13,13 +13,14 @@
 #include <lwip/err.h>
 #include <lwip/apps/sntp.h>
 
-#include <string.h>
-#include <stdlib.h>
-#include <time.h>
 #include <sys/time.h>
 #include <esp_sntp.h>
+#include "events_common.h"
 
-extern EventGroupHandle_t comms_event_group;
+/**
+ * @brief The event group used to manage network events.
+ */
+static EventGroupHandle_t xNetworkEventGroup;
 
 static const char *SNTP_TAG = "SNTP";
 #define MAX_TZ_LEN 64
@@ -36,7 +37,7 @@ static void apply_tz(const char *timezone) {
 }
 
 static void time_synced_handler(struct timeval *new_time) {
-  xEventGroupSetBits(comms_event_group, TIME_SYNC_BIT);
+  xEventGroupSetBits(xNetworkEventGroup, SNTP_TIME_SYNCED_BIT);
 
   time_t now;
   time(&now);
@@ -52,7 +53,9 @@ static void time_synced_handler(struct timeval *new_time) {
   }
 }
 
-void initialize_sntp(const char* primary_server) {
+static void initialize_sntp(const char* primary_server) {
+  xEventGroupClearBits(xNetworkEventGroup, SNTP_TIME_SYNCED_BIT);
+
   g_start_tick = xTaskGetTickCount() * portTICK_PERIOD_MS;
   sntp_stop();
 
@@ -89,7 +92,8 @@ const char *sntp_get_system_tz() {
 }
 
 
-void sntp_sync_init(const char* primary_server) {
+void sntp_sync_init(EventGroupHandle_t networkEventGroup, const char* primary_server) {
+  xNetworkEventGroup = networkEventGroup;
   apply_tz(sntp_get_system_tz());
   initialize_sntp(primary_server);
 }

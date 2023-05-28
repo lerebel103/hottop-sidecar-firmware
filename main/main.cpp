@@ -1,16 +1,17 @@
 #include <esp_log.h>
 #include <driver/gpio.h>
 #include <esp_event.h>
+#include <freertos/event_groups.h>
 #include "control_loop.h"
 #include "square_wave_gen.h"
-#include "wifi_connect.h"
+#include "wifi/wifi_connect.h"
 #include "nvs.h"
-#include "mqtt.h"
+#include "mqtt/mqtt.h"
 
 #define TAG  "main"
 
 static square_wave_handle_t wave_handle;
-
+static EventGroupHandle_t xNetworkEventGroup;
 /**
  * Hototop needs a 100Hz square signal, with 480us low side.
  * We have the option of generating this signal here for testing purposes with a real panel
@@ -27,18 +28,15 @@ void _generate_zero_signal() {
 }
 
 extern "C" void app_main() {
-  nvs_init();
-
-  /* Initialize the event loop */
-  ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-  wifi_connect_init();
-  mqtt_init();
-
-
-  ESP_LOGI(TAG, "Starting heater sidecar");
-  gpio_install_isr_service(0);
   _generate_zero_signal();
+
+  xNetworkEventGroup = xEventGroupCreate();
+  ESP_ERROR_CHECK(esp_event_loop_create_default());
+  gpio_install_isr_service(0);
+
+  nvs_init();
+  mqtt_init(xNetworkEventGroup);
+  wifi_connect_init(xNetworkEventGroup);
 
   control_loop_init();
   control_loop_run();

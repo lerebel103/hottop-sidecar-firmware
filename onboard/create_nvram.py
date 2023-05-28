@@ -18,9 +18,11 @@ NVRAM_SIZE = str(512 * 1024)
 
 env = 'dev'
 policy_name = 'RebelHeaterPowah_certificate_provisioning_policy'
+prov_template = 'RebelHeaterPowah_provisioning_templ'
+rotate_template = 'RebelHeaterPowah_rotation_templ'
 
 
-def generate_nvram_in(*, working_dir, stage, thing_type, ats_endpoint, jobs_endpoint, ca_cert, provisioning_cert, private_key):
+def generate_nvram_in(*, working_dir, stage, thing_type, prov_templ, rotate_templ, ats_endpoint, jobs_endpoint, ca_cert, provisioning_cert, private_key):
     print("Generating nvram")
     # First generate nvram
     #
@@ -30,6 +32,8 @@ def generate_nvram_in(*, working_dir, stage, thing_type, ats_endpoint, jobs_endp
         f.write('key,type,encoding,value\n')
         f.write('identity,namespace,,\n')
         f.write('stage_name,data,string,{}\n'.format(stage))
+        f.write('prov_templ,data,string,{}\n'.format(prov_templ))
+        f.write('rotate_templ,data,string,{}\n'.format(rotate_templ))
         f.write('thing_type,data,string,{}\n'.format(thing_type))
         f.write('ats_ep,data,string,{}\n'.format(ats_endpoint))
         f.write('jobs_ep,data,string,{}\n'.format(jobs_endpoint))
@@ -69,6 +73,8 @@ def generate_nvram_bin(working_dir):
     generate_nvram_in(
         working_dir=working_dir,
         stage=stage,
+        prov_templ=prov_template,
+        rotate_templ=rotate_template,
         ats_endpoint=ats_endpoint,
         thing_type=thing_type,
         jobs_endpoint=jobs_endpoint,
@@ -100,8 +106,8 @@ def main():
     print(f"Retrieving onboarding details {policy_name}")
 
     working_dir = "/tmp"
-    if not os.path.exists(os.path.join(working_dir, NVRAM_BIN_FILE)):
-        generate_nvram_bin(working_dir)
+    # if not os.path.exists(os.path.join(working_dir, NVRAM_BIN_FILE)):
+    generate_nvram_bin(working_dir)
 
     flash_nvram(working_dir)
 

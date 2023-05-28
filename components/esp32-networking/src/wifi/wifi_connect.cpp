@@ -3,7 +3,8 @@
 #include <freertos/event_groups.h>
 #include "wifi_connect.h"
 #include "qrcode.h"
-#include "sntp.h"
+#include "sntp/sntp.h"
+#include "events_common.h"
 #include <esp_netif.h>
 #include <wifi_provisioning/manager.h>
 #include <esp_wifi_default.h>
@@ -20,9 +21,13 @@
 #define PROV_TRANSPORT_BLE      "ble"
 #define QRCODE_BASE_URL         "https://espressif.github.io/esp-jumpstart/qrcode.html"
 
-EventGroupHandle_t comms_event_group;
-
 static esp_netif_t *s_netif_sta;
+
+/**
+ * @brief The event group used to manage network events.
+ */
+static EventGroupHandle_t xNetworkEventGroup;
+
 
 /* Event handler for catching system events */
 static void event_handler(void *arg, esp_event_base_t event_base,
@@ -76,12 +81,13 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
     ESP_LOGI(TAG, "Connected with IP Address:" IPSTR, IP2STR(&event->ip_info.ip));
     /* Signal main application to continue execution */
-    xEventGroupSetBits(comms_event_group, WIFI_CONNECTED_EVENT);
+    xEventGroupSetBits( xNetworkEventGroup,WIFI_CONNECTED_BIT );
 
     // Start SNTP
-    sntp_sync_init();
+    sntp_sync_init(xNetworkEventGroup);
   } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
     ESP_LOGI(TAG, "Disconnected. Connecting to the AP again...");
+    xEventGroupClearBits( xNetworkEventGroup,WIFI_CONNECTED_BIT );
     esp_wifi_connect();
   }
 }
@@ -137,10 +143,11 @@ static void wifi_prov_print_qr(const char *name, const char *username, const cha
     esp_qrcode_generate(&cfg, payload);
 }
 
-void wifi_connect_init() {
+void wifi_connect_init(EventGroupHandle_t networkEventGroup) {
+  xNetworkEventGroup = networkEventGroup;
+
   /* Initialize TCP/IP */
   ESP_ERROR_CHECK(esp_netif_init());
-  comms_event_group = xEventGroupCreate();
 
   /* Register our event handler for Wi-Fi, IP and Provisioning related events */
   ESP_ERROR_CHECK(esp_event_handler_register(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
