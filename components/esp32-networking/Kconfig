@@ -46,7 +46,7 @@ menu "esp32-networking"
 
         config GRI_MQTT_MAX_SEND_BLOCK_TIME_MS
             int "Timeout for send in milliseconds"
-            default 10000
+            default 5000
 
     endmenu # coreMQTT-Agent Manager Configurations
 

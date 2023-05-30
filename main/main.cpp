@@ -7,6 +7,7 @@
 #include "wifi/wifi_connect.h"
 #include "nvs.h"
 #include "mqtt/mqtt.h"
+#include "mqtt/shadow_handler.h"
 
 #define TAG  "main"
 
@@ -27,6 +28,13 @@ void _generate_zero_signal() {
   square_wave_gen_start(wave_handle);
 }
 
+void get_shadow_handler(void *pvIncomingPublishCallbackContext, MQTTPublishInfo_t *pxPublishInfo) {
+  ESP_LOGI(TAG, "Receive shadow topic %.*s",
+           pxPublishInfo->topicNameLength, pxPublishInfo->pTopicName);
+  ESP_LOGI(TAG, "Shadow ps %.*s",
+           pxPublishInfo->payloadLength, (const char*)pxPublishInfo->pPayload);
+}
+
 extern "C" void app_main() {
   _generate_zero_signal();
 
@@ -35,8 +43,14 @@ extern "C" void app_main() {
   gpio_install_isr_service(0);
 
   nvs_init();
+
+  device_shadow_cfg_t shadow_cfg = {.name = "config", .get_accepted = get_shadow_handler};
+  device_shadow_handle_t shadow_handle;
+  shadow_handler_init(shadow_cfg, &shadow_handle);
+
   mqtt_init(xNetworkEventGroup);
   wifi_connect_init(xNetworkEventGroup);
+
 
   control_loop_init();
   control_loop_run();

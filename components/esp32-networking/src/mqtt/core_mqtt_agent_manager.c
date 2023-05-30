@@ -60,7 +60,7 @@
 #include "events_common.h"
 
 /* Subscription manager include. */
-#include "subscription_manager.h"
+#include "pub_sub_manager.h"
 
 /* Network transport include. */
 #include "network_transport.h"

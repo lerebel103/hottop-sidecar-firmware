@@ -36,7 +36,7 @@
 #include <freertos/event_groups.h>
 
 /* Subscription manager header include. */
-#include "subscription_manager.h"
+#include "pub_sub_manager.h"
 #include "core_mqtt_agent.h"
 #include "events_common.h"
 
@@ -343,7 +343,7 @@ static void prvPublishCommandCallback( MQTTAgentCommandContext_t * pxCommandCont
   }
 }
 
-MQTTStatus_t mqttPublishMessage(const char* topic, const char* msg, size_t len, MQTTQoS_t qos, bool wait) {
+MQTTStatus_t mqttPublishMessage(const char* topic, const char* msg, size_t len, MQTTQoS_t qos) {
   MQTTPublishInfo_t xPublishInfo = {  };
   uint32_t ulNotification = 0U, ulValueToNotify = 0UL;
 
@@ -375,33 +375,28 @@ MQTTStatus_t mqttPublishMessage(const char* topic, const char* msg, size_t len, 
   * as it is to be checked against the value sent from the callback.. */
   ulNotification = ~ulValueToNotify;
 
-  /* Wait for coreMQTT-Agent task to have working network connection and
-   * not be performing an OTA update. */
-  xEventGroupWaitBits( xNetworkEventGroup,
-                       CORE_MQTT_AGENT_CONNECTED_BIT | CORE_MQTT_AGENT_OTA_NOT_IN_PROGRESS_BIT,
-                       pdFALSE,
-                       pdTRUE,
-                       portMAX_DELAY );
+  EventBits_t bits = xEventGroupGetBits(xNetworkEventGroup);
+  if (!(bits | CORE_MQTT_AGENT_CONNECTED_BIT && bits | CORE_MQTT_AGENT_OTA_NOT_IN_PROGRESS_BIT)) {
+    LogWarn( "Dropping publish, no mqtt connection or OTA in progress");
+    return MQTTSendFailed;
+  }
 
   MQTTStatus_t xCommandAdded = MQTTAgent_Publish(&xGlobalMqttAgentContext, &xPublishInfo, &xCommandParams);
   configASSERT( xCommandAdded == MQTTSuccess );
 
-  if (wait) {
-    prvWaitForCommandAcknowledgment(&ulNotification);
+  prvWaitForCommandAcknowledgment(&ulNotification);
 
-    /* The value received by the callback that executed when the publish was
+  /* The value received by the callback that executed when the publish was
    * acked came from the context passed into MQTTAgent_Publish() above, so
    * should match the value set in the context above. */
-    if (ulNotification != ulValueToNotify) {
-      LogError((
-                   "Timed out Rx'ing %s from Tx to %s",
-                       (qos == 0) ? "completion notification for QoS0 publish" : "ack for QoS1 publish",
-                       topic));
+  if (ulNotification != ulValueToNotify) {
+    LogError((
+                 "Timed out Rx'ing %s from Tx to %s",
+                     (qos == 0) ? "completion notification for QoS0 publish" : "ack for QoS1 publish",
+                     topic));
 
-      return MQTTSendFailed;
-    }
+    return MQTTSendFailed;
   }
-
   return MQTTSuccess;
 }
 

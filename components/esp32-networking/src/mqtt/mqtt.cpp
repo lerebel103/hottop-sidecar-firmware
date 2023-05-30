@@ -16,7 +16,7 @@
 
 extern "C" {
 #include "mqtt/core_mqtt_agent_manager.h"
-#include "subscription_manager.h"
+#include "pub_sub_manager.h"
 }
 
 #define TAG "mqtt"
@@ -85,6 +85,10 @@ const char *mqtt_thing_id() {
              l_Mac[0], l_Mac[1], l_Mac[2], l_Mac[3], l_Mac[4], l_Mac[5]);
   }
   return g_macStr;
+}
+
+bool mqtt_is_provisioning() {
+  return s_is_provisioning;
 }
 
 static BaseType_t prvInitializeNetworkContext(void) {
@@ -263,10 +267,10 @@ void _certificate_accepted_handler(void *pvIncomingPublishCallbackContext,
   }
 }
 
-void _certificate_rejected_handler(void *pvIncomingPublishCallbackContext,
-                                   MQTTPublishInfo_t *pxPublishInfo) {
-  ESP_LOGE(TAG, "Certificate rejected");
-}
+static  void _certificate_rejected_handler(void *pvIncomingPublishCallbackContext,
+                                     MQTTPublishInfo_t *pxPublishInfo) {
+    ESP_LOGE(TAG, "Certificate rejected");
+  }
 
 
 static void _subscribe_for_provisioning() {
@@ -409,8 +413,7 @@ static void _handle_register_new_thing(const char *template_name) {
 
       char *topic;
       asprintf(&topic, "$aws/provisioning-templates/%s/provision/json", template_name);
-      MQTTStatus_t status = mqttPublishMessage(topic, register_thing_payload, strlen(register_thing_payload), MQTTQoS1,
-                                               true);
+      MQTTStatus_t status = mqttPublishMessage(topic, register_thing_payload, strlen(register_thing_payload), MQTTQoS1);
       if (status != MQTTSuccess) {
         ESP_LOGE(TAG, "Could not activate device");
       }
@@ -429,7 +432,7 @@ static void agent_event_handler(void *arg, esp_event_base_t event_base, int32_t 
       // Need to kick off request for new certificate by sending blank payload
       _subscribe_for_provisioning();
       const char *payload = "{}";
-      mqttPublishMessage("$aws/certificates/create/json", payload, strlen(payload), MQTTQoS1, true);
+      mqttPublishMessage("$aws/certificates/create/json", payload, strlen(payload), MQTTQoS1);
     } else {
       // Normal flow then, might need to re-subscribe to expected topics
       _subscribe_runtime_topics();

@@ -33,13 +33,15 @@
 
 /* core MQTT include. */
 #include "core_mqtt.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/event_groups.h"
 
 /**
  * @brief Maximum number of subscriptions maintained by the subscription manager
  * simultaneously in a list.
  */
 #ifndef SUBSCRIPTION_MANAGER_MAX_SUBSCRIPTIONS
-    #define SUBSCRIPTION_MANAGER_MAX_SUBSCRIPTIONS    10U
+    #define SUBSCRIPTION_MANAGER_MAX_SUBSCRIPTIONS    20U
 #endif
 
 /**
@@ -122,7 +124,7 @@ bool handleIncomingPublishes( SubscriptionElement_t * pxSubscriptionList,
 bool mqttManagerSubscribeToTopic( MQTTQoS_t xQoS, const char * pcTopicFilter, IncomingPubCallback_t pxIncomingPublishCallback);
 
 
-MQTTStatus_t mqttPublishMessage(const char* topic, const char* msg, size_t len, MQTTQoS_t qos, bool wait);
+MQTTStatus_t mqttPublishMessage(const char* topic, const char* msg, size_t len, MQTTQoS_t qos);
 
 void mqttManagerPubSubInit(EventGroupHandle_t networkEventGroup);
 
