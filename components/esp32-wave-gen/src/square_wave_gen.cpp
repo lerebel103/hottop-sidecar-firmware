@@ -131,7 +131,7 @@ esp_err_t square_wave_gen_new(square_wave_cfg_t cfg, square_wave_handle_t *ret_h
   xTaskCreate(_generate_edge, "generateEdge", 1024, handle, 5, nullptr);
 
   // Good to go
-  ESP_LOGI(TAG, "Wave generator created on gpio %d deleted", handle->cfg.gpio);
+  ESP_LOGI(TAG, "Wave generator created on gpio %d", handle->cfg.gpio);
   *ret_handle = handle;
   return ret;
 
