@@ -1,8 +1,7 @@
 # Name,   Type,  SubType,  Offset,   Size,     Flags
 otadata,  data,    ota,     0xe000,   0x2000,
-factory,  app,  factory, 0x10000, 1300K,
-app0,     app,   ota_0,    , 1300K,
-app1,     app,   ota_1,    , 1300K,
+app0,     app,   ota_0,   0x10000 , 1998848,
+app1,     app,   ota_1,    , 1998848,
 nvs,      data,  nvs,      , 512K,
 nvs_factory,      data,  nvs,  , 512K,
 nvs_key,  data,  nvs_keys, , 0x1000,

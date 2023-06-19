@@ -121,10 +121,10 @@ void removeSubscription( SubscriptionElement_t * pxSubscriptionList,
 bool handleIncomingPublishes( SubscriptionElement_t * pxSubscriptionList,
                               MQTTPublishInfo_t * pxPublishInfo );
 
-bool mqttManagerSubscribeToTopic( MQTTQoS_t xQoS, const char * pcTopicFilter, IncomingPubCallback_t pxIncomingPublishCallback);
+bool mqttManagerSubscribeToTopic( MQTTQoS_t xQoS, const char * pcTopicFilter, size_t len, IncomingPubCallback_t pxIncomingPublishCallback);
 
 
-MQTTStatus_t mqttPublishMessage(const char* topic, const char* msg, size_t len, MQTTQoS_t qos);
+MQTTStatus_t mqttPublishMessage(const char* topic, size_t topicLen, const char* msg, size_t len, MQTTQoS_t qos);
 
 void mqttManagerPubSubInit(EventGroupHandle_t networkEventGroup);
 

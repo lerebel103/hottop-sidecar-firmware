@@ -373,8 +373,8 @@ static void prvIncomingPublishCallback( MQTTAgentContext_t * pMqttAgentContext,
         cOriginalChar = *pcLocation;
         *pcLocation = 0x00;
         ESP_LOGW( TAG,
-                  "WARN:  Received an unsolicited publish from topic %s",
-                  pxPublishInfo->pTopicName );
+                  "WARN:  Received an unsolicited publish from topic %s, %.*s",
+                  pxPublishInfo->pTopicName , pxPublishInfo->payloadLength, (const char*)pxPublishInfo->pPayload);
         *pcLocation = cOriginalChar;
     }
 }

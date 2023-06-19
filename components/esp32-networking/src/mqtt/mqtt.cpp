@@ -285,10 +285,10 @@ static void _subscribe_for_provisioning() {
   asprintf(&topic_prov_rejected, "$aws/provisioning-templates/%s/provision/json/rejected", s_identity.prov_template);
   const char *certificate_rejected_topic = "$aws/certificates/create/json/rejected";
 
-  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, topic_prov_accepted, _provision_accepted_handler);
-  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, certificate_accepted_topic, _certificate_accepted_handler);
-  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, topic_prov_rejected, _provision_rejected_handler);
-  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, certificate_rejected_topic, _certificate_rejected_handler);
+  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, topic_prov_accepted, strlen(topic_prov_accepted), _provision_accepted_handler);
+  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, certificate_accepted_topic, strlen(certificate_accepted_topic), _certificate_accepted_handler);
+  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, topic_prov_rejected, strlen(topic_prov_rejected), _provision_rejected_handler);
+  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, certificate_rejected_topic, strlen(certificate_rejected_topic), _certificate_rejected_handler);
 }
 
 static void _subscribe_runtime_topics() {
@@ -307,10 +307,10 @@ static void _subscribe_runtime_topics() {
   asprintf(&topic_prov_rejected, "$aws/provisioning-templates/%s/provision/json/rejected", s_identity.rotate_template);
   const char *certificate_rejected_topic = "$aws/certificates/create/json/rejected";
 
-  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, topic_prov_accepted, _provision_accepted_handler);
-  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, certificate_accepted_topic, _certificate_accepted_handler);
-  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, topic_prov_rejected, _provision_rejected_handler);
-  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, certificate_rejected_topic, _certificate_rejected_handler);
+  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, topic_prov_accepted, strlen(topic_prov_accepted), _provision_accepted_handler);
+  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, certificate_accepted_topic, strlen(certificate_accepted_topic), _certificate_accepted_handler);
+  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, topic_prov_rejected, strlen(topic_prov_rejected), _provision_rejected_handler);
+  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, certificate_rejected_topic, strlen(certificate_rejected_topic), _certificate_rejected_handler);
 }
 
 static void _handle_apply_credentials() {
@@ -413,7 +413,7 @@ static void _handle_register_new_thing(const char *template_name) {
 
       char *topic;
       asprintf(&topic, "$aws/provisioning-templates/%s/provision/json", template_name);
-      MQTTStatus_t status = mqttPublishMessage(topic, register_thing_payload, strlen(register_thing_payload), MQTTQoS1);
+      MQTTStatus_t status = mqttPublishMessage(topic, strlen(topic), register_thing_payload, strlen(register_thing_payload), MQTTQoS1);
       if (status != MQTTSuccess) {
         ESP_LOGE(TAG, "Could not activate device");
       }
@@ -432,7 +432,8 @@ static void agent_event_handler(void *arg, esp_event_base_t event_base, int32_t 
       // Need to kick off request for new certificate by sending blank payload
       _subscribe_for_provisioning();
       const char *payload = "{}";
-      mqttPublishMessage("$aws/certificates/create/json", payload, strlen(payload), MQTTQoS1);
+      const char* topic = "$aws/certificates/create/json";
+      mqttPublishMessage(topic, strlen(topic), payload, strlen(payload), MQTTQoS1);
     } else {
       // Normal flow then, might need to re-subscribe to expected topics
       _subscribe_runtime_topics();

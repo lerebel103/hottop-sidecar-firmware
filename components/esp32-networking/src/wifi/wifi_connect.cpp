@@ -97,6 +97,12 @@ static void wifi_init_sta(void) {
   /* Start Wi-Fi in station mode */
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
   ESP_ERROR_CHECK(esp_wifi_start());
+  ESP_ERROR_CHECK(esp_wifi_set_inactive_time(WIFI_IF_STA, 60));
+
+  wifi_config_t cfg;
+  esp_wifi_get_config(WIFI_IF_STA, &cfg);
+  cfg.sta.listen_interval = 16;
+  ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &cfg));
 }
 
 static void get_device_service_name(char *service_name, size_t max) {

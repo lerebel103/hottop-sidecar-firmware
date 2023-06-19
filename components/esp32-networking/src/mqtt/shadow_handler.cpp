@@ -59,19 +59,19 @@ esp_err_t _subscribe(device_shadow_t* handle) {
 
   ESP_LOGI(TAG, "Subscribing to shadow topics");
   _allocate_topic(handle->cfg, &handle->topic_get_accepted, "get", "accepted");
-  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, handle->topic_get_accepted, handle->cfg.get_accepted);
+  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, handle->topic_get_accepted, strlen(handle->topic_get_accepted), handle->cfg.get_accepted);
   _allocate_topic(handle->cfg, &handle->topic_get_rejected, "get", "rejected");
-  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, handle->topic_get_rejected, handle->cfg.get_rejected);
+  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, handle->topic_get_rejected, strlen(handle->topic_get_rejected), handle->cfg.get_rejected);
 
   _allocate_topic(handle->cfg, &handle->topic_update_accepted, "update", "accepted");
-  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, handle->topic_update_accepted, handle->cfg.update_accepted);
+  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, handle->topic_update_accepted, strlen(handle->topic_update_accepted), handle->cfg.update_accepted);
   _allocate_topic(handle->cfg, &handle->topic_update_rejected, "update", "rejected");
-  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, handle->topic_update_rejected, handle->cfg.update_rejected);
+  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, handle->topic_update_rejected, strlen(handle->topic_update_rejected), handle->cfg.update_rejected);
 
   _allocate_topic(handle->cfg, &handle->topic_delete_accepted, "delete", "accepted");
-  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, handle->topic_delete_accepted, handle->cfg.delete_accepted);
+  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, handle->topic_delete_accepted, strlen(handle->topic_delete_accepted), handle->cfg.delete_accepted);
   _allocate_topic(handle->cfg, &handle->topic_delete_rejected, "delete", "rejected");
-  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, handle->topic_delete_rejected, handle->cfg.delete_rejected);
+  mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, handle->topic_delete_rejected, strlen(handle->topic_delete_rejected), handle->cfg.delete_rejected);
 
   handle->is_subscribed = true;
   return ret;
@@ -138,7 +138,7 @@ esp_err_t shadow_handler_get(device_shadow_handle_t handle) {
 
   // Publish blank message to get entire shadow
   const static char *payload = "{}";
-  mqttPublishMessage(handle->topic_get, payload, strlen(payload), MQTTQoS1);
+  mqttPublishMessage(handle->topic_get, strlen(handle->topic_get), payload, strlen(payload), MQTTQoS1);
 
   return ret;
 }

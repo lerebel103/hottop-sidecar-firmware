@@ -4,6 +4,7 @@ set(COMPONENT_SRCDIRS
         src/mqtt
         src/wifi
         src/sntp
+        src/ota
         )
 
 set(COMPONENT_ADD_INCLUDEDIRS
@@ -20,6 +21,7 @@ set(COMPONENT_REQUIRES
         coreMQTT
         coreMQTT-Agent
         backoffAlgorithm
+        ota-for-aws-iot-embedded-sdk
         )
 
 idf_component_register(
@@ -27,3 +29,5 @@ idf_component_register(
         REQUIRES ${COMPONENT_REQUIRES}
         INCLUDE_DIRS ${COMPONENT_ADD_INCLUDEDIRS}
 )
+
+

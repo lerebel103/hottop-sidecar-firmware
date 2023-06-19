@@ -246,7 +246,7 @@ static BaseType_t prvWaitForCommandAcknowledgment( uint32_t * pulNotifiedValue )
   return xReturn;
 }
 
-bool mqttManagerSubscribeToTopic( MQTTQoS_t xQoS, const char * pcTopicFilter, IncomingPubCallback_t pxIncomingPublishCallback)
+bool mqttManagerSubscribeToTopic( MQTTQoS_t xQoS, const char * pcTopicFilter, size_t len, IncomingPubCallback_t pxIncomingPublishCallback)
 {
   MQTTStatus_t xCommandAdded;
   BaseType_t xCommandAcknowledged = pdFALSE;
@@ -267,7 +267,7 @@ bool mqttManagerSubscribeToTopic( MQTTQoS_t xQoS, const char * pcTopicFilter, In
   /* Complete the subscribe information.  The topic string must persist for
    * duration of subscription! */
   xSubscribeInfo.pTopicFilter = pcTopicFilter;
-  xSubscribeInfo.topicFilterLength = ( uint16_t ) strlen( pcTopicFilter );
+  xSubscribeInfo.topicFilterLength = len;
   xSubscribeInfo.qos = xQoS;
   xSubscribeArgs.pSubscribeInfo = &xSubscribeInfo;
   xSubscribeArgs.numSubscriptions = 1;
@@ -343,7 +343,7 @@ static void prvPublishCommandCallback( MQTTAgentCommandContext_t * pxCommandCont
   }
 }
 
-MQTTStatus_t mqttPublishMessage(const char* topic, const char* msg, size_t len, MQTTQoS_t qos) {
+MQTTStatus_t mqttPublishMessage(const char* topic, size_t topicLen, const char* msg, size_t len, MQTTQoS_t qos) {
   MQTTPublishInfo_t xPublishInfo = {  };
   uint32_t ulNotification = 0U, ulValueToNotify = 0UL;
 
@@ -351,7 +351,7 @@ MQTTStatus_t mqttPublishMessage(const char* topic, const char* msg, size_t len, 
   memset( ( void * ) &xPublishInfo, 0x00, sizeof( xPublishInfo ) );
   xPublishInfo.qos = qos;
   xPublishInfo.pTopicName = topic;
-  xPublishInfo.topicNameLength = ( uint16_t ) strlen(  xPublishInfo.pTopicName );
+  xPublishInfo.topicNameLength = topicLen;
   xPublishInfo.pPayload = msg;
   xPublishInfo.payloadLength = ( uint16_t ) strlen( (char*)xPublishInfo.pPayload );
 
