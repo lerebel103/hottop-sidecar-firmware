@@ -54,6 +54,7 @@ static void time_synced_handler(struct timeval *new_time) {
 }
 
 static void initialize_sntp(const char* primary_server) {
+  apply_tz(DEFAULT_SYSTEM_TZ);
   xEventGroupClearBits(xNetworkEventGroup, SNTP_TIME_SYNCED_BIT);
 
   g_start_tick = xTaskGetTickCount() * portTICK_PERIOD_MS;

@@ -4,7 +4,9 @@ set(COMPONENT_SRCDIRS
         src/mqtt
         src/wifi
         src/sntp
-        src/ota
+        src/shadow
+        src/fleet_provisioning
+        #src/ota
         )
 
 set(COMPONENT_ADD_INCLUDEDIRS
@@ -17,9 +19,9 @@ set(COMPONENT_REQUIRES
         wifi_provisioning
         mbedtls
         qrcode
+        posix_compat
         coreJSON
         coreMQTT
-        coreMQTT-Agent
         backoffAlgorithm
         ota-for-aws-iot-embedded-sdk
         )

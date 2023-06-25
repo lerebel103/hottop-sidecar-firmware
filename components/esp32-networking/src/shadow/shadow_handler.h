@@ -2,17 +2,15 @@
 
 #include <esp_err.h>
 #include "core_mqtt_serializer.h"
-
-extern "C" {
-  #include "pub_sub_manager.h"
-}
+#include "core_mqtt.h"
+#include "mqtt/mqtt_subscription_manager.h"
 
 /**
  * Handle for an instance of wave generator
  */
 typedef struct device_shadow_t *device_shadow_handle_t;
 
-void null_shadow_handler(void *pvIncomingPublishCallbackContext, MQTTPublishInfo_t *pxPublishInfo);
+void null_shadow_handler(MQTTContext_t *, MQTTPublishInfo_t *pxPublishInfo);
 
 
 struct device_shadow_cfg_t {
@@ -21,12 +19,9 @@ struct device_shadow_cfg_t {
    */
   char name[64];
 
-  IncomingPubCallback_t get_accepted;
-  IncomingPubCallback_t get_rejected = null_shadow_handler;
-  IncomingPubCallback_t update_accepted = null_shadow_handler;
-  IncomingPubCallback_t update_rejected = null_shadow_handler;
-  IncomingPubCallback_t delete_accepted = null_shadow_handler;
-  IncomingPubCallback_t delete_rejected = null_shadow_handler;
+  SubscriptionManagerCallback_t get;
+  SubscriptionManagerCallback_t updated = null_shadow_handler;
+  SubscriptionManagerCallback_t deleted = null_shadow_handler;
 };
 
 esp_err_t shadow_handler_init(struct device_shadow_cfg_t cfg, device_shadow_handle_t* ret_handle);
