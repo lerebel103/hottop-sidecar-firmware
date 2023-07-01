@@ -4,7 +4,7 @@
 #include "ota_appversion32.h"
 #include "events_common.h"
 #include "core_mqtt.h"
-  #include "mqtt/identity.h"
+#include "common/identity.h"
 #include "mqtt/mqtt_client.h"
 #include "mqtt/mqtt_subscription_manager.h"
 #include "fleet_provisioning/mqtt_provision.h"
@@ -38,6 +38,9 @@ extern "C" {
 #error "CMAKE_HARDWARE_REVISION_MAJOR is undefined, please set for your project"
 #endif
 
+#ifndef CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE
+#error "CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE must be enabled"
+#endif
 
 extern const char pcAwsCodeSigningCertPem[] asm("_binary_aws_codesign_crt_start");
 
@@ -562,15 +565,12 @@ int mqtt_ota_init(EventGroupHandle_t networkEventGroup) {
     goto error;
   }
 
-  if (returnStatus == EXIT_SUCCESS) {
-    auto res = xTaskCreate(otaThread, "ota thread", 4096, nullptr, 5, nullptr);
-    if (res != pdPASS) {
-      ESP_LOGE(TAG, "Failed to create OTA thread");
-      returnStatus = EXIT_FAILURE;
-      goto error;
-    }
+  if (xTaskCreate(otaThread, "ota thread", 4096, nullptr, 5, nullptr) != pdPASS) {
+    ESP_LOGE(TAG, "Failed to create OTA thread");
+    returnStatus = EXIT_FAILURE;
+    goto error;
   }
 
-error:
+  error:
   return returnStatus;
 }

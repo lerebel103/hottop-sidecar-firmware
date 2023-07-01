@@ -2,6 +2,7 @@
 #include <cstring>
 #include <esp_mac.h>
 #include <string>
+#include <nvs_flash.h>
 #include "identity.h"
 
 #define NVS_IDENTITY_NAMESPACE        "identity"

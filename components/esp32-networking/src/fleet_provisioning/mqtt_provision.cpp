@@ -2,13 +2,12 @@
 #include "mqtt_provision.h"
 #include "core_mqtt_serializer.h"
 #include "events_common.h"
-#include "mqtt/identity.h"
+#include "common/identity.h"
 #include "core_json.h"
 #include "mqtt/mqtt_client.h"
 #include "mqtt/mqtt_subscription_manager.h"
 
 #include <string>
-#include <nvs.h>
 #include <esp_event.h>
 #include <cstring>
 

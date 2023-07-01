@@ -3,7 +3,7 @@
 #include "core_mqtt_serializer.h"
 #include "core_mqtt.h"
 #include "mqtt/mqtt_client.h"
-#include "mqtt/identity.h"
+#include "common/identity.h"
 #include "fleet_provisioning/mqtt_provision.h"
 #include <esp_err.h>
 #include <esp_check.h>

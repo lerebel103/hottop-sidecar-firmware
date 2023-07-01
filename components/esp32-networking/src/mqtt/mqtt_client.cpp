@@ -18,7 +18,7 @@
 #include "backoff_algorithm.h"
 #include "clock.h"
 #include "mqtt_subscription_manager.h"
-#include "identity.h"
+#include "common/identity.h"
 
 
 #define TAG "mqtt"
