@@ -426,7 +426,7 @@ static void otaAppCallback(OtaJobEvent_t event, void *pData) {
 
       /* Shutdown OTA Agent, if it is required that the unsubscribe operations are not
        * performed while shutting down please set the second parameter to 0 instead of 1. */
-      OTA_Shutdown(0, 1);
+      OTA_Shutdown(0, 0);
 
       /* Requires manual activation of new image.*/
       LogError(("New image activation failed."));
@@ -452,7 +452,7 @@ static void otaAppCallback(OtaJobEvent_t event, void *pData) {
       if (err != OtaErrNone) {
         LogError((" Failed to set image state as accepted."));
         OTA_SetImageState(OtaImageStateRejected);
-        OTA_Shutdown(0, 1);
+        OTA_Shutdown(0, 0);
       }
 
       break;
@@ -475,7 +475,7 @@ static void otaAppCallback(OtaJobEvent_t event, void *pData) {
 
       /* Shutdown OTA Agent, if it is required that the unsubscribe operations are not
        * performed while shutting down please set the second parameter to 0 instead of 1. */
-      OTA_Shutdown(0, 1);
+      OTA_Shutdown(0, 0);
 
       break;
     }
