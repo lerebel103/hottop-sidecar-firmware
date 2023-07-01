@@ -396,7 +396,7 @@ void otaEventBufferFree(OtaEventData_t *const pxBuffer) {
 
 static bool _validate_new_image() {
   LogInfo(("Validating new image"));
-  bool is_ok = false;
+  bool is_ok = true;
 
   // Check thing type is valid and also hardware revision is compatible
   if (strcmp(CMAKE_THING_TYPE, identity_get()->thing_type) != 0){
@@ -445,13 +445,14 @@ static void otaAppCallback(OtaJobEvent_t event, void *pData) {
       if (_validate_new_image()) {
         LogInfo(("\n\nNew image is valid, accepting.\n\n"));
         err = OTA_SetImageState(OtaImageStateAccepted);
-        if (err != OtaErrNone) {
-          LogError((" Failed to set image state as accepted."));
-          OTA_SetImageState(OtaImageStateRejected);
-        }
       } else {
-        LogError(("New image validation failed"));
+        err = OtaErrActivateFailed;
+      }
+
+      if (err != OtaErrNone) {
+        LogError((" Failed to set image state as accepted."));
         OTA_SetImageState(OtaImageStateRejected);
+        OTA_Shutdown(0, 1);
       }
 
       break;
