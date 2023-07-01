@@ -15,6 +15,7 @@
 #include "fleet_provisioning/mqtt_provision.h"
 #include "mqtt/identity.h"
 #include "ota/mqtt_ota.h"
+#include "ota.h"
 
 #define TAG  "main"
 
@@ -46,7 +47,6 @@ void get_shadow_handler(MQTTContext_t * ctx, MQTTPublishInfo_t *pxPublishInfo) {
 
 
 extern "C" void app_main() {
-
 //  esp_deep_sleep(100000000);
 
   /*const esp_partition_t * update_partition = esp_ota_get_next_update_partition( NULL );
@@ -120,6 +120,8 @@ extern "C" void app_main() {
 
   do {
     ESP_LOGI(TAG, "Memory heap: %lu, min: %lu", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
+    printf("Ota state=%d, image_state=%d, in OTA: %lu\n", OTA_GetState(), OTA_GetImageState(),  (xEventGroupGetBits(xNetworkEventGroup) & CORE_MQTT_OTA_IN_PROGRESS_BIT));
+
     vTaskDelay(pdMS_TO_TICKS(1000));
   } while(1);
 

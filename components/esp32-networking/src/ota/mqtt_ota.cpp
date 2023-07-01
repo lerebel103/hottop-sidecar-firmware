@@ -416,19 +416,13 @@ static bool _validate_new_image() {
 
 
 static void otaAppCallback(OtaJobEvent_t event, void *pData) {
-  OtaErr_t err = OtaErrUninitialized;
   switch (event) {
     case OtaJobEventActivate: {
       LogInfo(("Received OtaJobEventActivate callback from OTA Agent."));
 
-      /* Activate the new firmware image. */
+      /* Activate the new firmware image - this call does not return when successful (reset device) */
+      // We've just finished downloading a new firmware, this sets it and devices needs restarting
       OTA_ActivateNewImage();
-
-      /* Shutdown OTA Agent, if it is required that the unsubscribe operations are not
-       * performed while shutting down please set the second parameter to 0 instead of 1. */
-      OTA_Shutdown(0, 0);
-
-      /* Requires manual activation of new image.*/
       LogError(("New image activation failed."));
 
       break;
@@ -443,11 +437,18 @@ static void otaAppCallback(OtaJobEvent_t event, void *pData) {
       // Set test sequence
 
       if (_validate_new_image()) {
-        LogInfo(("\n\nNew image is valid, accepting.\n\n"));
+        LogInfo(("\n\n!! New image is valid, accepting !!\n\n"));
         OTA_SetImageState(OtaImageStateAccepted);
+
+        // And we are done with OTA, application caries on as usual
+        xEventGroupClearBits(s_networkEventGroup, CORE_MQTT_OTA_IN_PROGRESS_BIT);
+        esp_event_post(CORE_MQTT_EVENT, CORE_MQTT_OTA_STOPPED_EVENT, NULL, 0, portMAX_DELAY);
       } else {
-        LogError(("\n\nNew image is invalid, rejecting.\n\n"));
+        LogError(("\n\n!! New image is invalid, rejecting !!\n\n"));
         OTA_SetImageState(OtaImageStateRejected);
+
+        // After testing phase completes, we need a manual restart
+        esp_event_post(CORE_MQTT_EVENT, CORE_MQTT_TEST_FAILED_RESTART, NULL, 0, portMAX_DELAY);
       }
 
       break;
@@ -462,26 +463,20 @@ static void otaAppCallback(OtaJobEvent_t event, void *pData) {
       break;
     }
     case OtaJobEventSelfTestFailed: {
-      LogWarn(("Received OtaJobEventSelfTestFailed callback from OTA Agent."));
-
-      /* Requires manual activation of previous image as self-test for
-       * new image downloaded failed.*/
       LogError(("Self-test failed, shutting down OTA Agent."));
-
-      /* Shutdown OTA Agent, if it is required that the unsubscribe operations are not
-       * performed while shutting down please set the second parameter to 0 instead of 1. */
-      OTA_Shutdown(0, 0);
-
+      // Restart is handled by OTA libraries.
       break;
     }
     case OtaJobEventReceivedJob: {
       ESP_LOGI(TAG, "Receive OTA start event");
       xEventGroupSetBits(s_networkEventGroup, CORE_MQTT_OTA_IN_PROGRESS_BIT);
+      esp_event_post(CORE_MQTT_EVENT, CORE_MQTT_OTA_STARTED_EVENT, NULL, 0, portMAX_DELAY);
       break;
     }
     case OtaJobEventUpdateComplete: {
       ESP_LOGI(TAG, "Receive OTA completed event");
       xEventGroupClearBits(s_networkEventGroup, CORE_MQTT_OTA_IN_PROGRESS_BIT);
+      esp_event_post(CORE_MQTT_EVENT, CORE_MQTT_OTA_STOPPED_EVENT, NULL, 0, portMAX_DELAY);
       break;
     }
     default: {
@@ -506,8 +501,12 @@ static void _event_handler(void *arg, esp_event_base_t event_base, int32_t event
         static OtaEventMsg_t eventMsg = {.pEventData = nullptr, .eventId = OtaAgentEventStart};
         OTA_SignalEvent(&eventMsg);
       }
-
     }
+  } else if (event_id == CORE_MQTT_TEST_FAILED_RESTART) {
+    ESP_LOGI(TAG, "Shutting OTA service");
+    OTA_Shutdown(portMAX_DELAY, 1 );
+    ESP_LOGI(TAG, "Restarting platform");
+    esp_restart();
   }
 }
 
