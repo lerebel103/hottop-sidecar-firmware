@@ -444,15 +444,10 @@ static void otaAppCallback(OtaJobEvent_t event, void *pData) {
 
       if (_validate_new_image()) {
         LogInfo(("\n\nNew image is valid, accepting.\n\n"));
-        err = OTA_SetImageState(OtaImageStateAccepted);
+        OTA_SetImageState(OtaImageStateAccepted);
       } else {
-        err = OtaErrActivateFailed;
-      }
-
-      if (err != OtaErrNone) {
-        LogError((" Failed to set image state as accepted."));
+        LogError(("\n\nNew image is invalid, rejecting.\n\n"));
         OTA_SetImageState(OtaImageStateRejected);
-        OTA_Shutdown(0, 0);
       }
 
       break;
