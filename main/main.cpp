@@ -38,6 +38,9 @@ void get_shadow_handler(MQTTContext_t * ctx, MQTTPublishInfo_t *pxPublishInfo) {
 
 
 extern "C" void app_main() {
+  ESP_ERROR_CHECK(esp_event_loop_create_default());
+  gpio_install_isr_service(0);
+
 //  esp_deep_sleep(100000000);
 
   /*const esp_partition_t * update_partition = esp_ota_get_next_update_partition( NULL );
@@ -51,7 +54,6 @@ extern "C" void app_main() {
 
   //_generate_zero_signal();
 
-  gpio_install_isr_service(0);
 
 
   // Enable power management and light sleep
