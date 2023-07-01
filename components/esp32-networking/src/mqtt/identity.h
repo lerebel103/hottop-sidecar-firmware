@@ -4,6 +4,8 @@
 struct identity_t {
   char *stage_name;
   char *thing_type;
+  int8_t hardware_major;
+  int8_t hardware_minor;
   char *prov_template;
   char *rotate_template;
   char *ats_ep;

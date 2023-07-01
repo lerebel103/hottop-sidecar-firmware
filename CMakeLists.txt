@@ -10,16 +10,16 @@ IF (NOT CMAKE_BUILD_TYPE)
 ENDIF ()
 MESSAGE(STATUS "${CMAKE_BUILD_TYPE} build selected")
 
-
-# If the environment does not specify a hardware revision to build for...
-IF (NOT HARDWARE_REVISION)
-    set(HARDWARE_REVISION "1.0"
-            CACHE INTERNAL "Set hardware revision to build for."
+# Target hardware revision for which this hardware is for
+IF (NOT HARDWARE_REVISION_MAJOR)
+    set(HARDWARE_REVISION_MAJOR 1
+            CACHE INTERNAL "Set major hardware revision to build for."
             FORCE)
 ENDIF ()
+
 # If the environment does not specify a hardware revision to build for...
 IF (NOT THING_TYPE)
-    set(THING_TYPE "rebel-hottop-sidecar"
+    set(THING_TYPE "HottopSidecar"
             CACHE INTERNAL "Set hardware thing type to build for."
             FORCE)
 ENDIF ()
@@ -84,8 +84,12 @@ execute_process(
 )
 STRING(STRIP ${PROJECT_VERSION_PATCH} PROJECT_VERSION_PATCH)
 
-# Not ussing this
-set(PROJECT_VERSION_TWEAK "0" CACHE INTERNAL "" FORCE)
+# Versioning derived from last tag
+add_definitions(-DCMAKE_THING_TYPE="${THING_TYPE}")
+add_definitions(-DCMAKE_FIRMWARE_VERSION_MAJOR=${PROJECT_VERSION_MAJOR})
+add_definitions(-DCMAKE_FIRMWARE_VERSION_MINOR=${PROJECT_VERSION_MINOR})
+add_definitions(-DCMAKE_FIRMWARE_VERSION_BUILD=${PROJECT_VERSION_PATCH})
+add_definitions(-DCMAKE_HARDWARE_REVISION_MAJOR=${HARDWARE_REVISION_MAJOR})
 
 SET(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH} CACHE INTERNAL "" FORCE)
 SET(FIRMWARE_VERSION ${PROJECT_VERSION} CACHE INTERNAL "" FORCE)

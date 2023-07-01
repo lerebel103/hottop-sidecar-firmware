@@ -4,7 +4,7 @@
 #define WIFI_CONNECTED_BIT                       ( 1 << 0 )
 #define CORE_MQTT_CLIENT_CONNECTED_BIT           ( 1 << 1 )
 #define SNTP_TIME_SYNCED_BIT                     ( 1 << 2 )
-#define CORE_MQTT_OTA_NOT_IN_PROGRESS_BIT        ( 1 << 3 )
+#define CORE_MQTT_OTA_IN_PROGRESS_BIT        ( 1 << 3 )
 
 
 

@@ -8,7 +8,6 @@
 #include <freertos/semphr.h>
 #include <esp_mac.h>
 #include <esp_event.h>
-#include <esp_tls.h>
 
 #include "events_common.h"
 
@@ -233,7 +232,7 @@ static MQTTPubAckInfo_t pOutgoingPublishRecords[OUTGOING_PUBLISH_RECORD_LEN];
  */
 static MQTTPubAckInfo_t pIncomingPublishRecords[INCOMING_PUBLISH_RECORD_LEN];
 
-SemaphoreHandle_t mqttMutex = xSemaphoreCreateMutex();
+SemaphoreHandle_t mqttMutex = xSemaphoreCreateRecursiveMutex();
 SemaphoreHandle_t ackMutex = xSemaphoreCreateMutex();
 TaskHandle_t mqtt_loop_task;
 
@@ -749,7 +748,6 @@ esp_err_t mqtt_client_init(EventGroupHandle_t networkEventGroup) {
   s_networkEventGroup = networkEventGroup;
 
   // Set initial state as disconnected
-  xEventGroupSetBits(networkEventGroup, CORE_MQTT_OTA_NOT_IN_PROGRESS_BIT);
   xEventGroupClearBits(networkEventGroup, CORE_MQTT_CLIENT_CONNECTED_BIT);
 
   ESP_LOGI(TAG, "Initialising for ATS endpoint: %s", identity_get()->ats_ep);

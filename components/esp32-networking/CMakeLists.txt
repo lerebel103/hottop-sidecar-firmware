@@ -6,7 +6,7 @@ set(COMPONENT_SRCDIRS
         src/sntp
         src/shadow
         src/fleet_provisioning
-        #src/ota
+        src/ota
         )
 
 set(COMPONENT_ADD_INCLUDEDIRS

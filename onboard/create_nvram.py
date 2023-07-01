@@ -22,7 +22,7 @@ prov_template = 'RebelHeaterPowah_provisioning_templ'
 rotate_template = 'RebelHeaterPowah_rotation_templ'
 
 
-def generate_nvram_in(*, working_dir, stage, thing_type, prov_templ, rotate_templ, ats_endpoint, jobs_endpoint, ca_cert, provisioning_cert, private_key):
+def generate_nvram_in(*, working_dir, stage, thing_type, hardware_major, hardware_minor, prov_templ, rotate_templ, ats_endpoint, jobs_endpoint, ca_cert, provisioning_cert, private_key):
     print("Generating nvram")
     # First generate nvram
     #
@@ -31,10 +31,12 @@ def generate_nvram_in(*, working_dir, stage, thing_type, prov_templ, rotate_temp
     with open(os.path.join(working_dir, NVRAM_IN_FILE), 'w') as f:
         f.write('key,type,encoding,value\n')
         f.write('identity,namespace,,\n')
+        f.write('thing_type,data,string,{}\n'.format(thing_type))
+        f.write('hw_major,data,i8,{}\n'.format(hardware_major))
+        f.write('hw_minor,data,i8,{}\n'.format(hardware_minor))
         f.write('stage_name,data,string,{}\n'.format(stage))
         f.write('prov_templ,data,string,{}\n'.format(prov_templ))
         f.write('rotate_templ,data,string,{}\n'.format(rotate_templ))
-        f.write('thing_type,data,string,{}\n'.format(thing_type))
         f.write('ats_ep,data,string,{}\n'.format(ats_endpoint))
         f.write('jobs_ep,data,string,{}\n'.format(jobs_endpoint))
         f.write(f'ca_cert,data,string,"{ca_cert}"\n')
@@ -72,11 +74,13 @@ def generate_nvram_bin(working_dir):
 
     generate_nvram_in(
         working_dir=working_dir,
+        thing_type=thing_type,
+        hardware_major=1,
+        hardware_minor=1,
         stage=stage,
         prov_templ=prov_template,
         rotate_templ=rotate_template,
         ats_endpoint=ats_endpoint,
-        thing_type=thing_type,
         jobs_endpoint=jobs_endpoint,
         ca_cert=ca_cert,
         provisioning_cert=provisioning_cert,

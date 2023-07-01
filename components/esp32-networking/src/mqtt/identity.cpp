@@ -7,6 +7,8 @@
 #define NVS_IDENTITY_NAMESPACE        "identity"
 
 #define NVS_THING_TYPE_KEY            "thing_type"
+#define NVS_HARDWARE_MAJOR_KEY        "hw_major"
+#define NVS_HARDWARE_MINOR_KEY        "hw_minor"
 #define NVS_STAGE_NAME_KEY            "stage_name"
 #define NVS_PROV_TEMPLATE_KEY         "prov_templ"
 #define NVS_ROTATE_TEMPLATE_KEY       "rotate_templ"
@@ -52,6 +54,9 @@ static void _load_identity() {
   free(s_identity.thing_type);
   s_identity.thing_type = (char *) calloc(len + 1, 1);
   ESP_ERROR_CHECK(nvs_get_str(nvs_handle, NVS_THING_TYPE_KEY, s_identity.thing_type, &len));
+
+  ESP_ERROR_CHECK(nvs_get_i8(nvs_handle, NVS_HARDWARE_MAJOR_KEY, &s_identity.hardware_major));
+  ESP_ERROR_CHECK(nvs_get_i8(nvs_handle, NVS_HARDWARE_MINOR_KEY, &s_identity.hardware_minor));
 
   ESP_ERROR_CHECK(nvs_get_str(nvs_handle, NVS_STAGE_NAME_KEY, nullptr, &len));
   free(s_identity.stage_name);

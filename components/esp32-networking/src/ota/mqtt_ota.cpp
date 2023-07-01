@@ -2,27 +2,41 @@
 #include "ota_os_freertos.h"
 #include "ota_pal.h"
 #include "ota_appversion32.h"
-#include "mqtt/mqtt.h"
 #include "events_common.h"
 #include "core_mqtt.h"
-#include "core_mqtt_agent.h"
+  #include "mqtt/identity.h"
+#include "mqtt/mqtt_client.h"
+#include "mqtt/mqtt_subscription_manager.h"
+#include "fleet_provisioning/mqtt_provision.h"
 
 #include <ota.h>
 #include <esp_event.h>
+#include <esp_app_desc.h>
 
 extern "C" {
 #include <osi/semaphore.h>
 #include <cerrno>
-#include "mqtt/pub_sub_manager.h"
-
 }
 
 #define TAG "ota"
 
-/**
- * @brief Static handle used for MQTT agent context.
- */
-extern MQTTAgentContext_t xGlobalMqttAgentContext;
+#ifndef CMAKE_THING_TYPE
+#error "CMAKE_THING_TYPE is undefined, please set string for your project"
+#endif
+
+#ifndef CMAKE_FIRMWARE_VERSION_BUILD
+#error "CMAKE_FIRMWARE_VERSION_BUILD is undefined, please set for your FIRMWARE"
+#endif
+#ifndef CMAKE_FIRMWARE_VERSION_MINOR
+#error "CMAKE_FIRMWARE_VERSION_MINOR is undefined, please set for your FIRMWARE"
+#endif
+#ifndef CMAKE_FIRMWARE_VERSION_MAJOR
+#error "CMAKE_FIRMWARE_VERSION_MAJOR is undefined, please set for your FIRMWARE"
+#endif
+
+#ifndef CMAKE_HARDWARE_REVISION_MAJOR
+#error "CMAKE_HARDWARE_REVISION_MAJOR is undefined, please set for your project"
+#endif
 
 
 extern const char pcAwsCodeSigningCertPem[] asm("_binary_aws_codesign_crt_start");
@@ -30,11 +44,13 @@ extern const char pcAwsCodeSigningCertPem[] asm("_binary_aws_codesign_crt_start"
 /**
  * @brief Struct for firmware version.
  */
-const AppVersion32_t appFirmwareVersion = {
-    .u = {
-        .x = {.build = 1, .minor = 1, .major = 1}
-    }
-};
+const AppVersion32_t appFirmwareVersion = { .u {
+  .x {
+      .build = CMAKE_FIRMWARE_VERSION_BUILD,
+      .minor = CMAKE_FIRMWARE_VERSION_MINOR,
+      .major = CMAKE_FIRMWARE_VERSION_MAJOR,
+  }
+}};
 
 /**
  * @brief Enum for type of OTA job messages received.
@@ -132,7 +148,7 @@ static OtaAppBuffer_t otaBuffer = {
 };
 
 static OtaInterfaces_t otaInterfaces;
-
+static EventGroupHandle_t s_networkEventGroup;
 
 jobMessageType_t getJobMessageType(const char *pTopicName,
                                    uint16_t topicNameLength) {
@@ -172,41 +188,44 @@ jobMessageType_t getJobMessageType(const char *pTopicName,
 
 /*-----------------------------------------------------------*/
 
-
-OtaEventData_t *otaEventBufferGet(void) {
+OtaEventData_t *otaEventBufferGet() {
   uint32_t ulIndex = 0;
   OtaEventData_t *pFreeBuffer = nullptr;
 
-  if (osi_sem_take(&bufferSemaphore, 0) == 0) {
-    for (ulIndex = 0; ulIndex < otaconfigMAX_NUM_OTA_DATA_BUFFERS; ulIndex++) {
-      if (eventBuffer[ulIndex].bufferUsed == false) {
-        eventBuffer[ulIndex].bufferUsed = true;
-        pFreeBuffer = &eventBuffer[ulIndex];
-        break;
+  do {
+    if (osi_sem_take(&bufferSemaphore, OSI_SEM_MAX_TIMEOUT) == 0) {
+      for (ulIndex = 0; ulIndex < otaconfigMAX_NUM_OTA_DATA_BUFFERS; ulIndex++) {
+        if (pFreeBuffer == nullptr && !eventBuffer[ulIndex].bufferUsed) {
+          eventBuffer[ulIndex].bufferUsed = true;
+          pFreeBuffer = &eventBuffer[ulIndex];
+        }
       }
+
+      osi_sem_give(&bufferSemaphore);
+    } else {
+      LogError(("Failed to get buffer semaphore: ,errno=%s", strerror(errno)));
     }
 
-    (void) osi_sem_give(&bufferSemaphore);
-  } else {
-    LogError(("Failed to get buffer semaphore: "
-              ",errno=%s",
-        strerror(errno)));
-  }
+    // We only have a limited amount of buffers (4 minimum)
+    // This busy wait is deliberate, so we get the ota task a chance to process the last request
+    if (pFreeBuffer == nullptr) {
+      ESP_LOGW(TAG, "No buffers left, waiting...");
+      vTaskDelay(pdMS_TO_TICKS(100));
+    }
+  } while(pFreeBuffer == nullptr);
 
   return pFreeBuffer;
 }
 
-
 /*-----------------------------------------------------------*/
 
-static void mqttJobCallback(void *pContext,
+static void mqttJobCallback(MQTTContext*,
                             MQTTPublishInfo_t *pPublishInfo) {
   OtaEventData_t *pData;
   OtaEventMsg_t eventMsg = {};
   jobMessageType_t jobMessageType;
 
   assert(pPublishInfo != NULL);
-  (void) pContext;
 
   jobMessageType = getJobMessageType(pPublishInfo->pTopicName, pPublishInfo->topicNameLength);
 
@@ -215,23 +234,14 @@ static void mqttJobCallback(void *pContext,
     case jobMessageTypeNextNotify:
 
       pData = otaEventBufferGet();
-
-      if (pData != NULL) {
-        memcpy(pData->data, pPublishInfo->pPayload, pPublishInfo->payloadLength);
-        pData->dataLength = pPublishInfo->payloadLength;
-        eventMsg.eventId = OtaAgentEventReceivedJobDocument;
-        eventMsg.pEventData = pData;
-
-        /* Send job document received event. */
-        OTA_SignalEvent(&eventMsg);
-      } else {
-        LogError(("No OTA data buffers available."));
-      }
-
+      memcpy(pData->data, pPublishInfo->pPayload, pPublishInfo->payloadLength);
+      pData->dataLength = pPublishInfo->payloadLength;
+      eventMsg.eventId = OtaAgentEventReceivedJobDocument;
+      eventMsg.pEventData = pData;
+      OTA_SignalEvent(&eventMsg);
       break;
 
     default:
-// %zu
       LogInfo(("Received job message %s size %zu.\n\n",
           pPublishInfo->pTopicName,
           pPublishInfo->payloadLength));
@@ -240,42 +250,42 @@ static void mqttJobCallback(void *pContext,
 
 /*-----------------------------------------------------------*/
 
-static void mqttDataCallback(void *pContext,
+static void mqttDataCallback(MQTTContext*,
                              MQTTPublishInfo_t *pPublishInfo) {
   OtaEventData_t *pData;
   OtaEventMsg_t eventMsg = {};
 
   assert(pPublishInfo != nullptr);
-  (void) pContext;
-
-  LogInfo(("Received data message callback, size %zu.\n\n", pPublishInfo->payloadLength));
-
   pData = otaEventBufferGet();
-
-  if (pData != NULL) {
-    memcpy(pData->data, pPublishInfo->pPayload, pPublishInfo->payloadLength);
-    pData->dataLength = pPublishInfo->payloadLength;
-    eventMsg.eventId = OtaAgentEventReceivedFileBlock;
-    eventMsg.pEventData = pData;
-
-    /* Send job document received event. */
-    OTA_SignalEvent(&eventMsg);
-  } else {
-    LogError(("No OTA data buffers available."));
-  }
+  memcpy(pData->data, pPublishInfo->pPayload, pPublishInfo->payloadLength);
+  pData->dataLength = pPublishInfo->payloadLength;
+  eventMsg.eventId = OtaAgentEventReceivedFileBlock;
+  eventMsg.pEventData = pData;
+  OTA_SignalEvent(&eventMsg);
 }
 
 static OtaMqttStatus_t mqttSubscribe(const char *pTopicFilter,
                                      uint16_t topicFilterLength,
                                      uint8_t qos) {
-  ESP_LOGI(TAG, "Request to subscribe to %.*s", topicFilterLength, pTopicFilter);
-
   OtaMqttStatus_t otaRet = OtaMqttSuccess;
 
   static const char *const pWildCardTopicFilters[] = {
       OTA_TOPIC_PREFIX OTA_TOPIC_JOBS "/#",
       OTA_TOPIC_PREFIX OTA_TOPIC_STREAM "/#"
   };
+
+  static const int NUM_SUBSCRIPTIONS = 1;
+  MQTTSubscribeInfo_t subscribeInfo[NUM_SUBSCRIPTIONS] = {
+      {
+          .qos = MQTTQoS::MQTTQoS1,
+          .pTopicFilter = pTopicFilter,
+          .topicFilterLength = (uint16_t) topicFilterLength
+      }
+  };
+
+  // Nothing will work if we don't have subscriptions,
+  // this will block the event queue but for good reasons
+  mqtt_client_subscribe(subscribeInfo, NUM_SUBSCRIPTIONS, UINT16_MAX);
 
   /* Match the input topic filter against the wild-card pattern of topics filters
    * relevant for the OTA Update service to determine the type of topic filter. */
@@ -290,10 +300,10 @@ static OtaMqttStatus_t mqttSubscribe(const char *pTopicFilter,
     if( isMatch ) {
       if (index == 0) {
         // Jobs
-        mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, pTopicFilter, topicFilterLength, mqttJobCallback);
+        SubscriptionManager_RegisterCallback(pWildCardTopicFilters[index], strlen(pWildCardTopicFilters[index]), mqttJobCallback);
       } else {
         // Data
-        mqttManagerSubscribeToTopic(MQTTQoS_t::MQTTQoS1, pTopicFilter, topicFilterLength, mqttDataCallback);
+        SubscriptionManager_RegisterCallback(pWildCardTopicFilters[index], strlen(pWildCardTopicFilters[index]), mqttDataCallback);
       }
     }
   }
@@ -308,8 +318,20 @@ static OtaMqttStatus_t mqttPublish(const char *const pacTopic,
                                    uint32_t msgSize,
                                    uint8_t qos) {
   OtaMqttStatus_t otaRet = OtaMqttSuccess;
-  auto ret = mqttPublishMessage(pacTopic, topicLen, pMsg, msgSize, (MQTTQoS_t)qos);
-  if (ret != MQTTSuccess) {
+
+  MQTTPublishInfo_t publishInfo = {
+      .qos = (MQTTQoS_t)qos,
+      .retain = false,
+      .dup = false,
+      .pTopicName = pacTopic,
+      .topicNameLength = topicLen,
+      .pPayload = pMsg,
+      .payloadLength = msgSize,
+  };
+
+  // Note how ack wait is zero, we want non-blocking.
+  int ret = mqtt_client_publish(&publishInfo, 0);
+  if (ret != EXIT_SUCCESS) {
     otaRet = OtaMqttPublishFailed;
   }
 
@@ -319,9 +341,17 @@ static OtaMqttStatus_t mqttPublish(const char *const pacTopic,
 static OtaMqttStatus_t mqttUnsubscribe(const char *pTopicFilter,
                                        uint16_t topicFilterLength,
                                        uint8_t qos) {
-  OtaMqttStatus_t otaRet = OtaMqttSuccess;
+  static const int NUM_SUBSCRIPTIONS = 1;
+  MQTTSubscribeInfo_t subscribeInfo[NUM_SUBSCRIPTIONS] = {
+      {
+          .qos = (MQTTQoS_t)qos,
+          .pTopicFilter = pTopicFilter,
+          .topicFilterLength = (uint16_t) topicFilterLength
+      }
+  };
 
-  return otaRet;
+  auto res = mqtt_client_unsubscribe(subscribeInfo, NUM_SUBSCRIPTIONS,  CONFIG_MQTT_ACK_TIMEOUT_MS);
+  return res == EXIT_SUCCESS ? OtaMqttSuccess : OtaMqttUnsubscribeFailed;
 }
 
 static void setOtaInterfaces(OtaInterfaces_t *pOtaInterfaces) {
@@ -354,7 +384,7 @@ static void setOtaInterfaces(OtaInterfaces_t *pOtaInterfaces) {
 
 
 void otaEventBufferFree(OtaEventData_t *const pxBuffer) {
-  if (osi_sem_take(&bufferSemaphore, 0) == 0) {
+  if (osi_sem_take(&bufferSemaphore, OSI_SEM_MAX_TIMEOUT) == 0) {
     pxBuffer->bufferUsed = false;
     (void) osi_sem_give(&bufferSemaphore);
   } else {
@@ -364,14 +394,31 @@ void otaEventBufferFree(OtaEventData_t *const pxBuffer) {
   }
 }
 
+static bool _validate_new_image() {
+  LogInfo(("Validating new image"));
+  bool is_ok = false;
 
-static void otaAppCallback(OtaJobEvent_t event,
-                           void *pData) {
+  // Check thing type is valid and also hardware revision is compatible
+  if (strcmp(CMAKE_THING_TYPE, identity_get()->thing_type) != 0){
+    ESP_LOGE(TAG, "Thing type is incompatible %s vs %s",
+             CMAKE_THING_TYPE, identity_get()->thing_type);
+    is_ok = false;
+  }
+
+  if (CMAKE_HARDWARE_REVISION_MAJOR != identity_get()->hardware_major) {
+    ESP_LOGE(TAG, "Hardware major version is incompatible %d vs %d",
+             CMAKE_HARDWARE_REVISION_MAJOR, identity_get()->hardware_major);
+    is_ok = false;
+  }
+
+  return is_ok;
+}
+
+
+static void otaAppCallback(OtaJobEvent_t event, void *pData) {
   OtaErr_t err = OtaErrUninitialized;
-  int ret;
-
   switch (event) {
-    case OtaJobEventActivate:
+    case OtaJobEventActivate: {
       LogInfo(("Received OtaJobEventActivate callback from OTA Agent."));
 
       /* Activate the new firmware image. */
@@ -385,37 +432,31 @@ static void otaAppCallback(OtaJobEvent_t event,
       LogError(("New image activation failed."));
 
       break;
-
-    case OtaJobEventFail:
+    }
+    case OtaJobEventFail: {
       LogInfo(("Received OtaJobEventFail callback from OTA Agent."));
 
       /* Nothing special to do. The OTA agent handles it. */
       break;
+    }
+    case OtaJobEventStartTest: {
+      // Set test sequence
 
-    case OtaJobEventStartTest:
-
-      /* This demo just accepts the image since it was a good OTA update and esp32-networking
-       * and services are all working (or we would not have made it this far). If this
-       * were some custom device that wants to test other things before validating new
-       * image, this would be the place to kick off those tests before calling
-       * OTA_SetImageState() with the final result of either accepted or rejected. */
-
-      LogInfo(("Received OtaJobEventStartTest callback from OTA Agent."));
-      err = OTA_SetImageState(OtaImageStateAccepted);
-
-      if (err == OtaErrNone) {
-        /* Erasing passive partition */
-        ret = otaPal_EraseLastBootPartition();
-        if (ret != ESP_OK) {
-          ESP_LOGE("otaAppCallback", "Failed to erase last boot partition! (%d)", ret);
+      if (_validate_new_image()) {
+        LogInfo(("\n\nNew image is valid, accepting.\n\n"));
+        err = OTA_SetImageState(OtaImageStateAccepted);
+        if (err != OtaErrNone) {
+          LogError((" Failed to set image state as accepted."));
+          OTA_SetImageState(OtaImageStateRejected);
         }
       } else {
-        LogError((" Failed to set image state as accepted."));
+        LogError(("New image validation failed"));
+        OTA_SetImageState(OtaImageStateRejected);
       }
 
       break;
-
-    case OtaJobEventProcessed:
+    }
+    case OtaJobEventProcessed: {
       LogDebug(("Received OtaJobEventProcessed callback from OTA Agent."));
 
       if (pData != NULL) {
@@ -423,9 +464,9 @@ static void otaAppCallback(OtaJobEvent_t event,
       }
 
       break;
-
-    case OtaJobEventSelfTestFailed:
-      LogDebug(("Received OtaJobEventSelfTestFailed callback from OTA Agent."));
+    }
+    case OtaJobEventSelfTestFailed: {
+      LogWarn(("Received OtaJobEventSelfTestFailed callback from OTA Agent."));
 
       /* Requires manual activation of previous image as self-test for
        * new image downloaded failed.*/
@@ -436,35 +477,32 @@ static void otaAppCallback(OtaJobEvent_t event,
       OTA_Shutdown(0, 1);
 
       break;
-
-    default:
+    }
+    case OtaJobEventReceivedJob: {
+      ESP_LOGI(TAG, "Receive OTA start event");
+      xEventGroupSetBits(s_networkEventGroup, CORE_MQTT_OTA_IN_PROGRESS_BIT);
+      break;
+    }
+    case OtaJobEventUpdateComplete: {
+      ESP_LOGI(TAG, "Receive OTA completed event");
+      xEventGroupClearBits(s_networkEventGroup, CORE_MQTT_OTA_IN_PROGRESS_BIT);
+      break;
+    }
+    default: {
       LogDebug(("Received invalid callback event from OTA Agent."));
+    }
   }
 }
 
 static void _event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
-  if (event_id == CORE_MQTT_AGENT_CONNECTED_EVENT) {
-    if (!mqtt_is_provisioning()) {
+  if (event_id == CORE_MQTT_CONNECTED_EVENT) {
+    if (!mqtt_provisioning_active()) {
       auto state = OTA_GetState();
-
-      /* Register Jobs callback to subscription manager. */
-      const char* jobsTopic = OTA_TOPIC_PREFIX OTA_TOPIC_JOBS "/#";
-      addSubscription(( SubscriptionElement_t * ) xGlobalMqttAgentContext.pIncomingCallbackContext,
-                      jobsTopic,
-                      strlen(jobsTopic),
-                      mqttJobCallback, nullptr);
-
-      /* Register stream callback to subscription manager. */
-      const char* streamTopic = OTA_TOPIC_PREFIX OTA_TOPIC_STREAM "/#";
-      addSubscription(( SubscriptionElement_t * ) xGlobalMqttAgentContext.pIncomingCallbackContext,
-                      streamTopic,
-                      strlen(streamTopic),
-                      mqttDataCallback, nullptr);
-
       /* Check if OTA process was suspended and resume if required. */
       if (state == OtaAgentStateSuspended) {
         /* Resume OTA operations. */
         ESP_LOGI(TAG, "Resuming");
+        xEventGroupSetBits(s_networkEventGroup, CORE_MQTT_OTA_IN_PROGRESS_BIT);
         OTA_Resume();
       } else {
         /* Send start event to OTA Agent.*/
@@ -484,59 +522,60 @@ static void otaThread(void *pParam) {
   vTaskDelete(nullptr);
 }
 
-int mqtt_ota_init() {
+int mqtt_ota_init(EventGroupHandle_t networkEventGroup) {
+  s_networkEventGroup = networkEventGroup;
   int returnStatus = EXIT_SUCCESS;
   OtaErr_t otaRet = OtaErrNone;
+
+  xEventGroupClearBits(networkEventGroup, CORE_MQTT_OTA_IN_PROGRESS_BIT);
+
+  LogInfo(("OTA Firmware version is %" PRIu8 ".%" PRIu8 "-%" PRIu16 ", for thing '%s' on hardware revision %d.%d",
+      appFirmwareVersion.u.x.major,
+      appFirmwareVersion.u.x.minor,
+      appFirmwareVersion.u.x.build,
+      identity_get()->thing_type, identity_get()->hardware_major, identity_get()->hardware_minor
+      ) );
 
   /* Initialize semaphore for buffer operations. */
   if( osi_sem_new( &bufferSemaphore, 0x7FFFU, 1 ) != 0 )
   {
-    LogError( ( "Failed to initialize buffer semaphore"
-                ",errno=%s",
-        strerror( errno ) ) );
+    LogError( ( "Failed to initialize buffer semaphore, errno=%s", strerror( errno ) ) );
 
     returnStatus = EXIT_FAILURE;
+    goto error;
   }
 
   /* OTA interface context required for library interface functions.*/
   setOtaInterfaces(&otaInterfaces);
 
-  ESP_ERROR_CHECK(esp_event_handler_register(CORE_MQTT_AGENT_EVENT, ESP_EVENT_ANY_ID, &_event_handler, nullptr));
+  ESP_ERROR_CHECK(esp_event_handler_register(CORE_MQTT_EVENT, ESP_EVENT_ANY_ID, &_event_handler, nullptr));
 
   if (!otaPal_SetCodeSigningCertificate(pcAwsCodeSigningCertPem)) {
     LogError(("Failed to allocate memory for Code Signing Certificate"));
     returnStatus = EXIT_FAILURE;
+    goto error;
   }
 
-  LogInfo(("OTA init Application version %u.%u.%u",
-      appFirmwareVersion.u.x.major,
-      appFirmwareVersion.u.x.minor,
-      appFirmwareVersion.u.x.build));
+  if ((otaRet = OTA_Init(&otaBuffer,
+                         &otaInterfaces,
+                         reinterpret_cast<const uint8_t *>(identity_thing_id()),
+                         otaAppCallback)) != OtaErrNone) {
+    LogError(("Failed to initialize OTA Agent, exiting = %u.",
+        otaRet));
 
-  if (returnStatus == EXIT_SUCCESS) {
-    if ((otaRet = OTA_Init(&otaBuffer,
-                           &otaInterfaces,
-                           reinterpret_cast<const uint8_t *>(mqtt_thing_id()),
-                           otaAppCallback)) != OtaErrNone) {
-      LogError(("Failed to initialize OTA Agent, exiting = %u.",
-          otaRet));
-
-      returnStatus = EXIT_FAILURE;
-    }
+    returnStatus = EXIT_FAILURE;
+    goto error;
   }
 
-  /****************************** Create OTA Task. ******************************/
-
   if (returnStatus == EXIT_SUCCESS) {
-    auto res = xTaskCreate(otaThread, "ota thread", 2096 + configMINIMAL_STACK_SIZE, nullptr, 5, nullptr);
+    auto res = xTaskCreate(otaThread, "ota thread", 4096, nullptr, 5, nullptr);
     if (res != pdPASS) {
       ESP_LOGE(TAG, "Failed to create OTA thread");
       returnStatus = EXIT_FAILURE;
+      goto error;
     }
   }
 
-  //asprintf(dest, "$aws/things/%s/shadow/%s", mqtt_thing_id(), command);
-
-
+error:
   return returnStatus;
 }
