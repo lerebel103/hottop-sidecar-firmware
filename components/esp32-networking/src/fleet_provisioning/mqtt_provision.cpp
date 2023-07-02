@@ -1,7 +1,7 @@
 #include <freertos/FreeRTOS.h>
 #include "mqtt_provision.h"
 #include "core_mqtt_serializer.h"
-#include "events_common.h"
+#include "common/events_common.h"
 #include "common/identity.h"
 #include "core_json.h"
 #include "mqtt/mqtt_client.h"
@@ -10,6 +10,7 @@
 #include <string>
 #include <esp_event.h>
 #include <cstring>
+#include <esp_check.h>
 
 #define TAG "provisioning"
 #define MAX_PROV_TOPIC_LEN (128U)
@@ -73,7 +74,7 @@ void _certificate_rejected_handler(MQTTContext_t *,
   ESP_LOGI(TAG, "Certificate rejected");
 }
 
-static void _subscribe(const char* template_name) {
+static void _subscribe(const char *template_name) {
   ESP_LOGI(TAG, "Subscribing to provisioning topics");
 
   // Always make sure we grab the right template name and re-write topics
@@ -215,7 +216,7 @@ static void _mqtt_client_event_handler(void *arg, esp_event_base_t event_base, i
       _subscribe(identity_get()->prov_template);
 
       const char *payload = "{}";
-      const char* topic = "$aws/certificates/create/json";
+      const char *topic = "$aws/certificates/create/json";
       MQTTPublishInfo_t publishInfo = {
           .qos = MQTTQoS_t::MQTTQoS1,
           .retain = false,
@@ -247,13 +248,20 @@ static void provisioning_event_handler(void *arg, esp_event_base_t event_base, i
   }
 }
 
-void mqtt_provision_init(EventGroupHandle_t networkEventGroup) {
+esp_err_t mqtt_provision_init(EventGroupHandle_t networkEventGroup) {
   s_networkEventGroup = networkEventGroup;
+  esp_err_t ret = ESP_OK;
 
   // Register event handlers
-  ESP_ERROR_CHECK(esp_event_handler_register(
-      CORE_MQTT_EVENT, ESP_EVENT_ANY_ID, &_mqtt_client_event_handler, nullptr));
-  ESP_ERROR_CHECK(esp_event_handler_register(
-      MQTT_PROVISIONING_EVENT, ESP_EVENT_ANY_ID, &provisioning_event_handler, nullptr));
+  ESP_GOTO_ON_ERROR(esp_event_handler_register(
+      CORE_MQTT_EVENT, ESP_EVENT_ANY_ID, &_mqtt_client_event_handler, nullptr),
+                    error, TAG, "Failed to register event handler for MQTT");
+  ESP_GOTO_ON_ERROR(esp_event_handler_register(
+      MQTT_PROVISIONING_EVENT, ESP_EVENT_ANY_ID, &provisioning_event_handler, nullptr),
+                    error, TAG, "Failed to register event handler for Provisioning events");
 
+  return ret;
+
+  error:
+  return ret;
 }

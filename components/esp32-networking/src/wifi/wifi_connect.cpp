@@ -4,13 +4,15 @@
 #include "wifi_connect.h"
 #include "qrcode.h"
 #include "sntp/sntp.h"
-#include "events_common.h"
+#include "common/events_common.h"
+#include "common/identity.h"
 #include <esp_netif.h>
 #include <wifi_provisioning/manager.h>
 #include <esp_wifi_default.h>
 #include <esp_wifi.h>
 #include <esp_log.h>
 #include <wifi_provisioning/scheme_ble.h>
+#include <esp_mac.h>
 
 #define TAG "wifi_connect"
 
@@ -80,6 +82,18 @@ static void event_handler(void *arg, esp_event_base_t event_base,
   } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
     ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
     ESP_LOGI(TAG, "Connected with IP Address:" IPSTR, IP2STR(&event->ip_info.ip));
+
+    // Set host name as STA client
+    char hostname[128];
+    char mac[14];
+    uint8_t l_Mac[6];
+    esp_efuse_mac_get_default(l_Mac);
+    snprintf(mac, 14, "%02hX%02hX%02hX%02hX%02hX%02hX",
+                    l_Mac[0], l_Mac[1], l_Mac[2], l_Mac[3], l_Mac[4], l_Mac[5]);
+    sprintf(hostname, "%s-%s", identity_get()->thing_type, mac);
+    ESP_ERROR_CHECK(esp_netif_set_hostname(event->esp_netif, hostname));
+    ESP_LOGI(TAG, "Hostname set to  %s", hostname);
+
     /* Signal main application to continue execution */
     xEventGroupSetBits( xNetworkEventGroup,WIFI_CONNECTED_BIT );
 

@@ -1,5 +1,5 @@
 #include "shadow_handler.h"
-#include "events_common.h"
+#include "common/events_common.h"
 #include "core_mqtt_serializer.h"
 #include "core_mqtt.h"
 #include "mqtt/mqtt_client.h"

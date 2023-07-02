@@ -1,12 +1,13 @@
 #include "nvs.h"
+#include "events_common.h"
 #include <nvs_flash.h>
 #include <esp_log.h>
 
-#define TAG "nvs"
 #define IDENTITY_NS "identity"
 #define NVS_FACTORY_PART_NAME "nvs_factory"
 #define MAX_VALUE_LEN (10*1024)
 
+#define TAG "nvs"
 
 static void _nvs_factory_restore_commit() {
   ESP_LOGW(TAG, "Restoring NVS from Factory settings.");
@@ -119,7 +120,9 @@ static void _nvs_factory_restore_commit() {
   }
 }
 
-void nvs_init() {
+esp_err_t nvs_init() {
+  ESP_LOGI(TAG, "Initialising NVRAM");
+
   esp_err_t ret = nvs_flash_init();
   if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
     ESP_ERROR_CHECK(nvs_flash_erase());
@@ -138,10 +141,15 @@ void nvs_init() {
       ++keys_count;
     }
     nvs_release_iterator(it);
+
+    if (keys_count == 0) {
+      _nvs_factory_restore_commit();
+    }
+    return ESP_OK;
+  } else {
+    return ESP_FAIL;
   }
 
-  if (keys_count == 0) {
-    _nvs_factory_restore_commit();
-  }
+
 
 }

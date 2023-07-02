@@ -3,26 +3,22 @@
 #include <freertos/event_groups.h>
 
 #include "sntp.h"
-#include <esp_system.h>
-#include <esp_wifi.h>
-#include <esp_event.h>
 #include <esp_log.h>
 #include <esp_attr.h>
-#include <esp_sleep.h>
-#include <nvs_flash.h>
 #include <lwip/err.h>
 #include <lwip/apps/sntp.h>
 
 #include <sys/time.h>
 #include <esp_sntp.h>
-#include "events_common.h"
+#include "common/events_common.h"
+
+#define TAG "sntp"
 
 /**
  * @brief The event group used to manage network events.
  */
 static EventGroupHandle_t xNetworkEventGroup;
 
-static const char *SNTP_TAG = "SNTP";
 #define MAX_TZ_LEN 64
 char g_system_tz[MAX_TZ_LEN];
 
@@ -30,7 +26,7 @@ static TickType_t g_start_tick = 0;
 static int g_sntp_sync_duration = -1;
 
 static void apply_tz(const char *timezone) {
-  ESP_LOGI(SNTP_TAG, "Setting POSIX timezone to %s", timezone);
+  ESP_LOGI(TAG, "Setting POSIX timezone to %s", timezone);
 
   setenv("TZ", timezone, 1);
   tzset();
@@ -44,7 +40,7 @@ static void time_synced_handler(struct timeval *new_time) {
   char strftime_buf[80];
   strftime(strftime_buf, sizeof(strftime_buf), "%c", localtime(&now));
 
-  ESP_LOGI(SNTP_TAG, "---> Got time sync, current time is %s", strftime_buf);
+  ESP_LOGI(TAG, "---> Got time sync, current time is %s", strftime_buf);
 
   // This is only possible for the first call back, we won't know when the start is as NTP runs
   // on regular intervals later on (every hour), so cannot gauge how long subsequent syncs take
@@ -62,10 +58,10 @@ static void initialize_sntp(const char* primary_server) {
 
   sntp_setoperatingmode(SNTP_OPMODE_POLL);
   if (primary_server != nullptr) {
-    ESP_LOGI(SNTP_TAG, "Initializing SNTP with primary server '%s'", primary_server);
+    ESP_LOGI(TAG, "Initializing SNTP with primary server '%s'", primary_server);
     sntp_setservername(0, primary_server);
   } else {
-    ESP_LOGI(SNTP_TAG, "Initializing SNTP with primary server 'time.google.com'");
+    ESP_LOGI(TAG, "Initializing SNTP with primary server 'time.google.com'");
     sntp_setservername(0, "time.google.com");
   }
 

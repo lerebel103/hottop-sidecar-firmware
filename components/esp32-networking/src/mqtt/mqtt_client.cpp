@@ -9,7 +9,7 @@
 #include <esp_mac.h>
 #include <esp_event.h>
 
-#include "events_common.h"
+#include "common/events_common.h"
 
 #include "core_json.h"
 #include "core_mqtt.h"
@@ -51,22 +51,12 @@ ESP_EVENT_DEFINE_BASE(CORE_MQTT_EVENT);
  */
 #define CONNACK_RECV_TIMEOUT_MS                  ( 5000U )
 
-/**
- * @brief Maximum number of outgoing publishes maintained in the application
- * until an ack is received from the broker.
- */
-#define MAX_OUTGOING_PUBLISHES              ( 5U )
 
 /**
  * @brief Invalid packet identifier for the MQTT packets. Zero is always an
  * invalid packet identifier as per MQTT 3.1.1 spec.
  */
 #define MQTT_PACKET_ID_INVALID              ( ( uint16_t ) 0U )
-
-/**
- * @brief Timeout for MQTT_ProcessLoop function in milliseconds.
- */
-#define MQTT_PROCESS_LOOP_TIMEOUT_MS        ( 5000U )
 
 /**
  * @brief The maximum time interval in seconds which is allowed to elapse
@@ -79,25 +69,6 @@ ESP_EVENT_DEFINE_BASE(CORE_MQTT_EVENT);
  */
 #define MQTT_KEEP_ALIVE_INTERVAL_SECONDS    ( 60U )
 
-/**
- * @brief Delay between MQTT publishes in seconds.
- */
-#define DELAY_BETWEEN_PUBLISHES_SECONDS     ( 1U )
-
-/**
- * @brief Number of PUBLISH messages sent per iteration.
- */
-#define MQTT_PUBLISH_COUNT_PER_LOOP         ( 5U )
-
-/**
- * @brief Delay in seconds between two iterations of subscribePublishLoop().
- */
-#define MQTT_SUBPUB_LOOP_DELAY_SECONDS      ( 5U )
-
-/**
- * @brief Transport timeout in milliseconds for transport send and receive.
- */
-#define TRANSPORT_SEND_RECV_TIMEOUT_MS      ( 1500U )
 
 /**
  * @brief The name of the operating system that the application is running on.
@@ -322,6 +293,8 @@ static int waitForPacketAck(MQTTContext_t *pMqttContext,
   uint32_t ulCurrentTime = pMqttContext->getTime();
   uint32_t ulMqttProcessLoopTimeoutTime = ulCurrentTime + ulTimeout;
 
+  //printf(">>>> WAIT ACK <<<<<<<<\n");
+
   /* wait for packet match within allowed time period */
   while ((globalAckPacketIdentifier != usPacketIdentifier) &&
          (ulCurrentTime < ulMqttProcessLoopTimeoutTime) &&
@@ -349,7 +322,7 @@ subscribe_command(bool is_subscribe, const MQTTSubscribeInfo_t *topics, size_t n
   const char *operation_name = is_subscribe ? "subscribe" : "unsuscribe";
 
   for (int i = 0; i < numTopics; i++) {
-    LogInfo(("%s to %.*s", operation_name, topics[i].topicFilterLength, topics[i].pTopicFilter));
+    ESP_LOGI(TAG, "%s to %.*s", operation_name, topics[i].topicFilterLength, topics[i].pTopicFilter);
   }
 
   do {
@@ -364,6 +337,7 @@ subscribe_command(bool is_subscribe, const MQTTSubscribeInfo_t *topics, size_t n
           /* Reset the ACK packet identifier being received, and number of expected status. */
           globalAckPacketIdentifier = 0;
 
+          //printf(">>>> Subscribe \n");
           if (is_subscribe) {
             numSubAckStatus = 0;
             mqttStatus = MQTT_Subscribe(&xMqttContext,
@@ -384,8 +358,8 @@ subscribe_command(bool is_subscribe, const MQTTSubscribeInfo_t *topics, size_t n
       xSemaphoreGive(mqttMutex);
 
       if (mqttStatus != MQTTSuccess) {
-        LogError(("Failed to send %s packet to broker with error = %s.", operation_name,
-            MQTT_Status_strerror(mqttStatus)));
+        ESP_LOGE(TAG, "Failed to send %s packet to broker with error = %s.", operation_name,
+                 MQTT_Status_strerror(mqttStatus));
         returnStatus = EXIT_FAILURE;
       } else {
         returnStatus = waitForPacketAck(&xMqttContext, packetId,
@@ -407,9 +381,9 @@ subscribe_command(bool is_subscribe, const MQTTSubscribeInfo_t *topics, size_t n
     // Report on console
     for (int i = 0; i < numTopics; i++) {
       if (returnStatus == EXIT_FAILURE) {
-        LogError(("Failed to %s to %.*s", operation_name, topics[i].topicFilterLength, topics[i].pTopicFilter));
+        ESP_LOGE(TAG, "Failed to %s to %.*s", operation_name, topics[i].topicFilterLength, topics[i].pTopicFilter);
       } else {
-        LogDebug(("%s to %.*s OK.", operation_name, topics[i].topicFilterLength, topics[i].pTopicFilter));
+        ESP_LOGD(TAG, "%s to %.*s OK.", operation_name, topics[i].topicFilterLength, topics[i].pTopicFilter);
       }
     }
 
@@ -444,10 +418,10 @@ int mqtt_client_publish(const MQTTPublishInfo_t *publishInfo, uint16_t ackWaitMS
   }
 
   int returnStatus = EXIT_SUCCESS;
-  MQTTStatus_t mqttStatus = MQTTStatus_t ::MQTTSuccess;
+  MQTTStatus_t mqttStatus = MQTTStatus_t::MQTTSuccess;
   uint16_t packetId = 0;
 
-  LogInfo(("Publishing to %.*s", publishInfo->topicNameLength, publishInfo->pTopicName));
+  ESP_LOGI(TAG, "Publishing to %.*s", publishInfo->topicNameLength, publishInfo->pTopicName);
   do {
     xSemaphoreTake(ackMutex, portMAX_DELAY);
     {
@@ -461,6 +435,7 @@ int mqtt_client_publish(const MQTTPublishInfo_t *publishInfo, uint16_t ackWaitMS
           /* Reset the ACK packet identifier being received, and number of expected status. */
           globalAckPacketIdentifier = 0;
 
+          //printf(">>>> Publish\n");
           mqttStatus = MQTT_Publish(&xMqttContext,
                                     publishInfo,
                                     packetId);
@@ -471,8 +446,8 @@ int mqtt_client_publish(const MQTTPublishInfo_t *publishInfo, uint16_t ackWaitMS
       xSemaphoreGive(mqttMutex);
 
       if (mqttStatus != MQTTSuccess) {
-        LogError(("Failed to send Publish packet to broker with error = %s.",
-            MQTT_Status_strerror(mqttStatus)));
+        ESP_LOGE(TAG, "Failed to send Publish packet to broker with error = %s.",
+                 MQTT_Status_strerror(mqttStatus));
         returnStatus = EXIT_FAILURE;
       } else {
         returnStatus = waitForPacketAck(&xMqttContext, packetId,
@@ -483,9 +458,9 @@ int mqtt_client_publish(const MQTTPublishInfo_t *publishInfo, uint16_t ackWaitMS
 
     // Report on console
     if (returnStatus == EXIT_FAILURE) {
-      LogError(("Publish failed to %.*s", publishInfo->topicNameLength, publishInfo->pTopicName));
+      ESP_LOGE(TAG, "Publish failed to %.*s", publishInfo->topicNameLength, publishInfo->pTopicName);
     } else {
-      LogInfo(("Publishing success to %.*s", publishInfo->topicNameLength, publishInfo->pTopicName));
+      ESP_LOGI(TAG, "Publishing success to %.*s", publishInfo->topicNameLength, publishInfo->pTopicName);
     }
 
     // Don't kill CPU
@@ -538,7 +513,7 @@ static void eventCallback(MQTTContext_t *pMqttContext,
       }
       default: {
         /* Any other packet type is invalid. */
-        LogError(("Unknown packet type received:(%02x).", pPacketInfo->type));
+        ESP_LOGE(TAG, "Unknown packet type received:(%02x).", pPacketInfo->type);
       }
     }
   }
@@ -605,10 +580,10 @@ static int establishMqttSession(MQTTContext_t *pMqttContext,
 
   if (mqttStatus != MQTTSuccess) {
     returnStatus = EXIT_FAILURE;
-    LogError(("Connection with MQTT broker failed with status %s.",
-        MQTT_Status_strerror(mqttStatus)));
+    ESP_LOGE(TAG, "Connection with MQTT broker failed with status %s.",
+             MQTT_Status_strerror(mqttStatus));
   } else {
-    LogInfo(("MQTT connection successfully established with broker."));
+    ESP_LOGI(TAG, "MQTT connection successfully established with broker.");
   }
 
   return returnStatus;
@@ -641,7 +616,7 @@ static int connectToServerWithBackoffRetries(NetworkContext_t *pNetworkContext,
     /* Establish a TLS session with the MQTT broker. This example connects
      * to the MQTT broker as specified in AWS_IOT_ENDPOINT and AWS_MQTT_PORT
      * at the demo config header. */
-    LogInfo(("Establishing a TLS session to %s.", identity_get()->ats_ep));
+    ESP_LOGI(TAG, "Establishing a TLS session to %s.", identity_get()->ats_ep);
     xSemaphoreTake(mqttMutex, portMAX_DELAY);
 
     // Free memory associated with previous connection, if any
@@ -664,12 +639,12 @@ static int connectToServerWithBackoffRetries(NetworkContext_t *pNetworkContext,
       backoffAlgStatus = BackoffAlgorithm_GetNextBackoff(&reconnectParams, rand(), &nextRetryBackOff);
 
       if (backoffAlgStatus == BackoffAlgorithmRetriesExhausted) {
-        LogError(("Connection to the broker failed, all attempts exhausted."));
+        ESP_LOGE(TAG, "Connection to the broker failed, all attempts exhausted.");
         returnStatus = EXIT_FAILURE;
       } else if (backoffAlgStatus == BackoffAlgorithmSuccess) {
-        LogWarn(("Connection to the broker failed. Retrying connection "
-                 "after %hu ms backoff.",
-            (unsigned short) nextRetryBackOff));
+        ESP_LOGW(TAG, "Connection to the broker failed. Retrying connection "
+                      "after %hu ms backoff.",
+                 (unsigned short) nextRetryBackOff);
         Clock_SleepMs(nextRetryBackOff);
       }
     }
@@ -704,7 +679,7 @@ static void prvMQTTClientTask(void *pvParameters) {
       auto returnStatus = connectToServerWithBackoffRetries(&xNetworkContext, &xMqttContext, &clientSessionPresent,
                                                             &brokerSessionPresent);
       if (returnStatus == EXIT_SUCCESS && xMqttContext.connectStatus == MQTTConnected) {
-        LogInfo(("--> MQTT broker Connected"));
+        ESP_LOGI(TAG, "--> MQTT broker Connected");
         xEventGroupSetBits(s_networkEventGroup, CORE_MQTT_CLIENT_CONNECTED_BIT);
         esp_event_post(CORE_MQTT_EVENT, CORE_MQTT_CONNECTED_EVENT, NULL, 0, portMAX_DELAY);
       }
@@ -714,7 +689,9 @@ static void prvMQTTClientTask(void *pvParameters) {
     if (_go && xEventGroupGetBits(s_networkEventGroup) & CORE_MQTT_CLIENT_CONNECTED_BIT) {
 
       xSemaphoreTake(mqttMutex, portMAX_DELAY);
+      //printf("............... 1\n");
       MQTTStatus_t status = MQTT_ProcessLoop(&xMqttContext);
+      //printf("............... 2\n");
       xSemaphoreGive(mqttMutex);
       portYIELD();
       vTaskDelay(1);  // Without this call, other tasks don't get a chance to acquire mqttMutex
@@ -787,7 +764,7 @@ esp_err_t mqtt_client_init(EventGroupHandle_t networkEventGroup) {
                                     INCOMING_PUBLISH_RECORD_LEN);
 
       if (status != MQTTSuccess) {
-        LogError(("MQTT_InitStatefulQoS failed: Status = %s.", MQTT_Status_strerror(status)));
+        ESP_LOGE(TAG, "MQTT_InitStatefulQoS failed: Status = %s.", MQTT_Status_strerror(status));
         configASSERT(xResult == MQTTSuccess);
       } else {
         // Cool now we can start the mqtt loop
@@ -812,15 +789,15 @@ esp_err_t mqtt_client_init(EventGroupHandle_t networkEventGroup) {
 
 /*-----------------------------------------------------------*/
 
-int mqtt_client_disconnect() {
+esp_err_t mqtt_client_disconnect() {
   if (!mqtt_is_initialised()) {
     ESP_LOGE(TAG, "MQTT client is not running");
-    return EXIT_FAILURE;
+    return ESP_FAIL;
   }
 
   ESP_LOGI(TAG, "Stopping MQTT client");
   MQTTStatus_t mqttStatus = MQTTSuccess;
-  int returnStatus = EXIT_SUCCESS;
+  int returnStatus = ESP_OK;
 
   /* Send DISCONNECT. */
   xSemaphoreTake(mqttMutex, portMAX_DELAY);
@@ -828,9 +805,9 @@ int mqtt_client_disconnect() {
     mqttStatus = MQTT_Disconnect(&xMqttContext);
 
     if (mqttStatus != MQTTSuccess) {
-      LogError(("Sending MQTT DISCONNECT failed with status=%s.",
-          MQTT_Status_strerror(mqttStatus)));
-      returnStatus = EXIT_FAILURE;
+      ESP_LOGE(TAG, "Sending MQTT DISCONNECT failed with status=%s.",
+               MQTT_Status_strerror(mqttStatus));
+      returnStatus = ESP_FAIL;
     }
 
     // Wait for MQTT loop to terminate
@@ -840,7 +817,7 @@ int mqtt_client_disconnect() {
 
   do {
     vTaskDelay(pdMS_TO_TICKS(100));
-  } while(mqtt_loop_task != nullptr);
+  } while (mqtt_loop_task != nullptr);
 
   // Free memory associated with previous connection, if any
   xTlsDisconnect(&xNetworkContext);

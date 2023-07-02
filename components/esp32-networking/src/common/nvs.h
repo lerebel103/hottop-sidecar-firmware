@@ -1,3 +1,5 @@
 #pragma once
 
-void nvs_init();
+#include <esp_err.h>
+
+esp_err_t nvs_init();

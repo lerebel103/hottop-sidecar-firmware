@@ -5,4 +5,4 @@
 
 bool mqtt_provisioning_active();
 
-void mqtt_provision_init(EventGroupHandle_t networkEventGroup);
+esp_err_t mqtt_provision_init(EventGroupHandle_t networkEventGroup);

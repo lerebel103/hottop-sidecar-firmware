@@ -39,7 +39,6 @@ static ssr_ctrl_handle_t s_ssr1 = nullptr;
 static ssr_ctrl_handle_t s_ssr2 = nullptr;
 static uint64_t s_max31850_addr = 0;
 
-
 /*
  * Checks that the TC and environmental temperatures are within acceptable range
  */
@@ -127,7 +126,12 @@ static void _control() {
 void control_loop_run() {
   semaphoreHandle = xSemaphoreCreateBinary();
 
+
   TaskHandle_t xTaskToNotify = xTaskGetCurrentTaskHandle();
+
+  // As this is a control loop, we want it to be very high priority
+  vTaskPrioritySet(xTaskToNotify, 6);
+
   ESP_ERROR_CHECK(gptimer_start(gptimer));
   _go = true;
 
@@ -151,8 +155,8 @@ void control_loop_run() {
 
   do {
     if (xSemaphoreTake(semaphoreHandle, pdMS_TO_TICKS(1000)) == pdPASS) {
-      ESP_ERROR_CHECK(esp_task_wdt_reset());
-      _control();
+        ESP_ERROR_CHECK(esp_task_wdt_reset());
+        _control();
     }
   } while (_go);
 
