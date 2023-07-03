@@ -8,6 +8,15 @@ extern "C" {
 #endif
 /* *INDENT-ON* */
 
+  /* Note: what is here was re-written to remove semaphore locking.
+   *
+   * The original implementation from Espressif located under coreMQTT/port is
+   * rather unworkable in practice since it is single-duplex. Reads and Writes are
+   * protected by the same mutex, which means that no Tx can take place whilst
+   * in an Rx call, which is almost always since these are long polls with timeout.
+   *
+   * Instead, we rely on the mqtt wrapper client code to handle thread safety.
+   */
 
 TlsTransportStatus_t xTlsConnectNoThread(NetworkContext_t* pxNetworkContext );
 
