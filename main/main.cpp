@@ -39,7 +39,7 @@ void get_shadow_handler(MQTTContext_t * ctx, MQTTPublishInfo_t *pxPublishInfo) {
 }
 
 static void _event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
-  if (event_id == CORE_MQTT_CONNECTED_EVENT) {
+  if (event_id == CORE_MQTT_CONNECTED_EVENT || event_id == CORE_MQTT_OTA_STOPPED_EVENT) {
 
     // Enable power management and light sleep
     esp_pm_config_esp32s3_t pm_config = {
@@ -50,7 +50,7 @@ static void _event_handler(void *arg, esp_event_base_t event_base, int32_t event
     ESP_ERROR_CHECK( esp_pm_configure(&pm_config) );
 
     esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
-  } else if(event_id == CORE_MQTT_DISCONNECTED_EVENT) {
+  } else if(event_id == CORE_MQTT_DISCONNECTED_EVENT || event_id == CORE_MQTT_OTA_STARTED_EVENT) {
 
     // Enable power management and light sleep
     esp_pm_config_esp32s3_t pm_config = {

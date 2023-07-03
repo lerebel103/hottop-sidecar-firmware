@@ -213,7 +213,7 @@ OtaEventData_t *otaEventBufferGet() {
     // We only have a limited amount of buffers (4 minimum)
     // This busy wait is deliberate, so we get the ota task a chance to process the last request
     if (pFreeBuffer == nullptr) {
-      ESP_LOGW(TAG, "No buffers left, waiting...");
+      ESP_LOGD(TAG, "No buffers left, waiting...");
       vTaskDelay(pdMS_TO_TICKS(100));
     }
   } while (pFreeBuffer == nullptr);
@@ -335,7 +335,7 @@ static OtaMqttStatus_t mqttPublish(const char *const pacTopic,
       .payloadLength = msgSize,
   };
 
-  int ret = mqtt_client_publish(&publishInfo, CONFIG_MQTT_ACK_TIMEOUT_MS);
+  int ret = mqtt_client_publish(&publishInfo, 0);
   if (ret != EXIT_SUCCESS) {
     otaRet = OtaMqttPublishFailed;
   }
