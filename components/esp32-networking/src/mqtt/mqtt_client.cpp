@@ -143,25 +143,6 @@ ESP_EVENT_DEFINE_BASE(CORE_MQTT_EVENT);
 
 /*-----------------------------------------------------------*/
 
-/**
- * @brief Structure to keep the MQTT publish packets until an ack is received
- * for QoS1 publishes.
- */
-typedef struct PublishPackets {
-  /**
-   * @brief Packet identifier of the publish packet.
-   */
-  uint16_t packetId;
-
-  /**
-   * @brief Publish info of the publish packet.
-   */
-  MQTTPublishInfo_t pubInfo;
-} PublishPackets_t;
-
-
-/*-----------------------------------------------------------*/
-
 static bool _go = false;
 
 /**
@@ -278,15 +259,12 @@ static BaseType_t prvInitializeNetworkContext(void) {
 static int waitForPacketAck(MQTTContext_t *pMqttContext,
                             uint16_t usPacketIdentifier,
                             uint32_t ulTimeout) {
-  // If no wait timeout, then client code does not want to wait for ACK
   if (ulTimeout == 0) {
     return (xEventGroupGetBits(s_networkEventGroup) & CORE_MQTT_CLIENT_CONNECTED_BIT) ? EXIT_SUCCESS : EXIT_FAILURE;
   }
 
   uint32_t ulCurrentTime = pMqttContext->getTime();
   uint32_t ulMqttProcessLoopTimeoutTime = ulCurrentTime + ulTimeout;
-
-  //printf(">>>> WAIT ACK <<<<<<<<\n");
 
   /* wait for packet match within allowed time period */
   while ((globalAckPacketIdentifier != usPacketIdentifier) &&
@@ -328,7 +306,6 @@ subscribe_command(bool is_subscribe, const MQTTSubscribeInfo_t *topics, size_t n
           /* Reset the ACK packet identifier being received, and number of expected status. */
           globalAckPacketIdentifier = 0;
 
-          //printf(">>>> Subscribe \n");
           if (is_subscribe) {
             numSubAckStatus = 0;
             mqttStatus = MQTT_Subscribe(&xMqttContext,
@@ -422,7 +399,6 @@ int mqtt_client_publish(const MQTTPublishInfo_t *publishInfo, uint16_t ackWaitMS
           /* Reset the ACK packet identifier being received, and number of expected status. */
           globalAckPacketIdentifier = 0;
 
-          //printf(">>>> Publish\n");
           mqttStatus = MQTT_Publish(&xMqttContext,
                                     publishInfo,
                                     packetId);
@@ -672,14 +648,7 @@ static void prvMQTTClientTask(void *pvParameters) {
 
     // Yay, then we can do loop processing
     if (_go && xEventGroupGetBits(s_networkEventGroup) & CORE_MQTT_CLIENT_CONNECTED_BIT) {
-
-      //xSemaphoreTake(mqttMutex, portMAX_DELAY);
-      //printf("............... 1\n");
       MQTTStatus_t status = MQTT_ProcessLoop(&xMqttContext);
-      //printf("............... 2\n");
-      //xSemaphoreGive(mqttMutex);
-      portYIELD();
-      vTaskDelay(1);  // Without this call, other tasks don't get a chance to acquire mqttMutex
 
       if (xMqttContext.connectStatus != MQTTConnected || status == MQTTRecvFailed || status == MQTTSendFailed) {
         // Then we have a disconnect
