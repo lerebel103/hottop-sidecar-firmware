@@ -281,7 +281,7 @@ void wifi_connect_init(EventGroupHandle_t networkEventGroup) {
     ESP_LOGI(TAG, "Already provisioned, starting Wi-Fi STA");
 
     /* We don't need the manager as device is already provisioned,
-     * so let's release it's resources */
+     * so let's release its resources */
     wifi_prov_mgr_deinit();
 
     /* Start Wi-Fi station */

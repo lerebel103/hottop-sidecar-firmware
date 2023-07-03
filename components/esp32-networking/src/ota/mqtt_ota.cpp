@@ -207,7 +207,7 @@ OtaEventData_t *otaEventBufferGet() {
 
       osi_sem_give(&bufferSemaphore);
     } else {
-      LogError(("Failed to get buffer semaphore: ,errno=%s", strerror(errno)));
+      ESP_LOGE(TAG, "Failed to get buffer semaphore: ,errno=%s", strerror(errno));
     }
 
     // We only have a limited amount of buffers (4 minimum)
@@ -247,8 +247,8 @@ static void mqttJobCallback(MQTTContext *,
 
     default:
       ESP_LOGI(TAG, "Received job message %s size %zu.\n\n",
-          pPublishInfo->pTopicName,
-          pPublishInfo->payloadLength);
+               pPublishInfo->pTopicName,
+               pPublishInfo->payloadLength);
   }
 }
 
@@ -335,8 +335,7 @@ static OtaMqttStatus_t mqttPublish(const char *const pacTopic,
       .payloadLength = msgSize,
   };
 
-  // Note how ack wait is zero, we want non-blocking.
-  int ret = mqtt_client_publish(&publishInfo, 0);
+  int ret = mqtt_client_publish(&publishInfo, CONFIG_MQTT_ACK_TIMEOUT_MS);
   if (ret != EXIT_SUCCESS) {
     otaRet = OtaMqttPublishFailed;
   }
@@ -394,9 +393,8 @@ void otaEventBufferFree(OtaEventData_t *const pxBuffer) {
     pxBuffer->bufferUsed = false;
     (void) osi_sem_give(&bufferSemaphore);
   } else {
-    LogError(("Failed to get buffer semaphore: "
-              ",errno=%s",
-        strerror(errno)));
+    ESP_LOGE(TAG, "Failed to get buffer semaphore: "
+                  ",errno=%s", strerror(errno));
   }
 }
 
@@ -429,7 +427,7 @@ static void otaAppCallback(OtaJobEvent_t event, void *pData) {
       /* Activate the new firmware image - this call does not return when successful (reset device) */
       // We've just finished downloading a new firmware, this sets it and devices needs restarting
       OTA_ActivateNewImage();
-      LogError(("New image activation failed."));
+      ESP_LOGE(TAG, "New image activation failed.");
 
       break;
     }
@@ -450,7 +448,7 @@ static void otaAppCallback(OtaJobEvent_t event, void *pData) {
         xEventGroupClearBits(s_networkEventGroup, CORE_MQTT_OTA_IN_PROGRESS_BIT);
         esp_event_post(CORE_MQTT_EVENT, CORE_MQTT_OTA_STOPPED_EVENT, NULL, 0, portMAX_DELAY);
       } else {
-        LogError(("\n\n!! New image is invalid, rejecting !!\n\n"));
+        ESP_LOGE(TAG, "\n\n!! New image is invalid, rejecting !!\n\n");
         OTA_SetImageState(OtaImageStateRejected);
 
         // After testing phase completes, we need a manual restart
@@ -469,7 +467,7 @@ static void otaAppCallback(OtaJobEvent_t event, void *pData) {
       break;
     }
     case OtaJobEventSelfTestFailed: {
-      LogError(("Self-test failed, shutting down OTA Agent."));
+      ESP_LOGE(TAG, "Self-test failed, shutting down OTA Agent.");
       // Restart is handled by OTA libraries.
       break;
     }
@@ -502,7 +500,7 @@ static void _event_handler(void *arg, esp_event_base_t event_base, int32_t event
         ESP_LOGI(TAG, ">> Resuming");
         xEventGroupSetBits(s_networkEventGroup, CORE_MQTT_OTA_IN_PROGRESS_BIT);
         OTA_Resume();
-      } else if (state <= OtaAgentStateReady || state == OtaAgentStateStopped){
+      } else if (state <= OtaAgentStateReady || state == OtaAgentStateStopped) {
         /* Send start event to OTA Agent.*/
         ESP_LOGI(TAG, ">> Starting");
         eventMsg = {.pEventData = nullptr, .eventId = OtaAgentEventStart};
@@ -543,7 +541,7 @@ esp_err_t mqtt_ota_init(EventGroupHandle_t networkEventGroup) {
 
   /* Initialize semaphore for buffer operations. */
   if (osi_sem_new(&bufferSemaphore, 0x7FFFU, 1) != 0) {
-    LogError(("Failed to initialize buffer semaphore, errno=%s", strerror(errno)));
+    ESP_LOGE(TAG, "Failed to initialize buffer semaphore, errno=%s", strerror(errno));
     ret = ESP_FAIL;
     goto error;
   }
@@ -555,7 +553,7 @@ esp_err_t mqtt_ota_init(EventGroupHandle_t networkEventGroup) {
                     error, TAG, "Failed to register event handler for MQTT");
 
   if (!otaPal_SetCodeSigningCertificate(pcAwsCodeSigningCertPem)) {
-    LogError(("Failed to allocate memory for Code Signing Certificate"));
+    ESP_LOGE(TAG, "Failed to allocate memory for Code Signing Certificate");
     ret = ESP_FAIL;
     goto error;
   }
@@ -564,8 +562,7 @@ esp_err_t mqtt_ota_init(EventGroupHandle_t networkEventGroup) {
                          &otaInterfaces,
                          reinterpret_cast<const uint8_t *>(identity_thing_id()),
                          otaAppCallback)) != OtaErrNone) {
-    LogError(("Failed to initialize OTA Agent, exiting = %u.",
-        otaRet));
+    ESP_LOGE(TAG, "Failed to initialize OTA Agent, exiting = %u.", otaRet);
 
     ret = ESP_FAIL;
     goto error;
