@@ -9,6 +9,7 @@ set(COMPONENT_SRCDIRS
         src/shadow
         src/fleet_provisioning
         src/ota
+        src/mqtt/port/network_transport
         )
 
 set(COMPONENT_ADD_INCLUDEDIRS

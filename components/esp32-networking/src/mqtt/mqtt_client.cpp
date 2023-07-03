@@ -14,11 +14,11 @@
 #include "core_json.h"
 #include "core_mqtt.h"
 #include "transport_interface.h"
-#include "network_transport.h"
 #include "backoff_algorithm.h"
 #include "clock.h"
 #include "mqtt_subscription_manager.h"
 #include "common/identity.h"
+#include "mqtt/port/network_transport/network_transport_no_tread.h"
 
 
 #define TAG "mqtt"
@@ -203,8 +203,7 @@ static MQTTPubAckInfo_t pOutgoingPublishRecords[OUTGOING_PUBLISH_RECORD_LEN];
  */
 static MQTTPubAckInfo_t pIncomingPublishRecords[INCOMING_PUBLISH_RECORD_LEN];
 
-SemaphoreHandle_t mqttMutex = xSemaphoreCreateRecursiveMutex();
-SemaphoreHandle_t ackMutex = xSemaphoreCreateMutex();
+SemaphoreHandle_t mqttMutex = xSemaphoreCreateMutex();
 TaskHandle_t mqtt_loop_task;
 
 /*-----------------------------------------------------------*/
@@ -259,7 +258,6 @@ static BaseType_t prvInitializeNetworkContext(void) {
   xNetworkContext.pcClientKey = private_key;
   xNetworkContext.pcClientKeySize = strlen(private_key) + 1;
   xNetworkContext.pxTls = NULL;
-  xNetworkContext.xTlsContextSemaphore = xSemaphoreCreateMutex();
   xNetworkContext.disableSni = 0;
 
   /* AWS IoT requires devices to send the Server Name Indication (SNI)
@@ -271,11 +269,6 @@ static BaseType_t prvInitializeNetworkContext(void) {
   static const char *pcAlpnProtocols[] = {NULL, NULL};
   pcAlpnProtocols[0] = AWS_IOT_MQTT_ALPN;
   xNetworkContext.pAlpnProtos = pcAlpnProtocols;
-
-  if (xNetworkContext.xTlsContextSemaphore == NULL) {
-    ESP_LOGE(TAG, "Not enough memory to create TLS semaphore for global network context.");
-    xRet = pdFAIL;
-  }
 
   return xRet;
 }
@@ -326,11 +319,9 @@ subscribe_command(bool is_subscribe, const MQTTSubscribeInfo_t *topics, size_t n
   }
 
   do {
-    xSemaphoreTake(ackMutex, portMAX_DELAY);
+    xSemaphoreTake(mqttMutex, portMAX_DELAY);
     {
       /* Send SUBSCRIBE packet. */
-      xSemaphoreTake(mqttMutex, portMAX_DELAY);
-      {
         if (_go) {
           packetId = MQTT_GetPacketId(&xMqttContext);
 
@@ -354,8 +345,6 @@ subscribe_command(bool is_subscribe, const MQTTSubscribeInfo_t *topics, size_t n
         } else {
           returnStatus = EXIT_FAILURE;
         }
-      }
-      xSemaphoreGive(mqttMutex);
 
       if (mqttStatus != MQTTSuccess) {
         ESP_LOGE(TAG, "Failed to send %s packet to broker with error = %s.", operation_name,
@@ -376,7 +365,7 @@ subscribe_command(bool is_subscribe, const MQTTSubscribeInfo_t *topics, size_t n
         }
       }
     }
-    xSemaphoreGive(ackMutex);
+    xSemaphoreGive(mqttMutex);
 
     // Report on console
     for (int i = 0; i < numTopics; i++) {
@@ -423,11 +412,9 @@ int mqtt_client_publish(const MQTTPublishInfo_t *publishInfo, uint16_t ackWaitMS
 
   ESP_LOGI(TAG, "Publishing to %.*s", publishInfo->topicNameLength, publishInfo->pTopicName);
   do {
-    xSemaphoreTake(ackMutex, portMAX_DELAY);
+    xSemaphoreTake(mqttMutex, portMAX_DELAY);
     {
-      /* Send SUBSCRIBE packet. */
-      xSemaphoreTake(mqttMutex, portMAX_DELAY);
-      {
+      /* Send PUBLISH packet. */
         if (_go) {
 
           packetId = MQTT_GetPacketId(&xMqttContext);
@@ -442,8 +429,6 @@ int mqtt_client_publish(const MQTTPublishInfo_t *publishInfo, uint16_t ackWaitMS
         } else {
           returnStatus = EXIT_FAILURE;
         }
-      }
-      xSemaphoreGive(mqttMutex);
 
       if (mqttStatus != MQTTSuccess) {
         ESP_LOGE(TAG, "Failed to send Publish packet to broker with error = %s.",
@@ -454,7 +439,7 @@ int mqtt_client_publish(const MQTTPublishInfo_t *publishInfo, uint16_t ackWaitMS
                                         ackWaitMS == UINT16_MAX ? CONFIG_MQTT_ACK_TIMEOUT_MS : ackWaitMS);
       }
     }
-    xSemaphoreGive(ackMutex);
+    xSemaphoreGive(mqttMutex);
 
     // Report on console
     if (returnStatus == EXIT_FAILURE) {
@@ -620,9 +605,9 @@ static int connectToServerWithBackoffRetries(NetworkContext_t *pNetworkContext,
     xSemaphoreTake(mqttMutex, portMAX_DELAY);
 
     // Free memory associated with previous connection, if any
-    xTlsDisconnect(pNetworkContext);
+    xTlsDisconnectNoThread(pNetworkContext);
 
-    if (xTlsConnect(pNetworkContext) == TLS_TRANSPORT_SUCCESS) {
+    if (xTlsConnectNoThread(pNetworkContext) == TLS_TRANSPORT_SUCCESS) {
       /* A clean MQTT session needs to be created, if there is no session saved
        * in this MQTT client. */
       createCleanSession = (*pClientSessionPresent == true) ? false : true;
@@ -653,7 +638,7 @@ static int connectToServerWithBackoffRetries(NetworkContext_t *pNetworkContext,
   // Free up resources left behind by last attempt to connect
   if (returnStatus == EXIT_FAILURE) {
     xSemaphoreTake(mqttMutex, portMAX_DELAY);
-    (void) xTlsDisconnect(pNetworkContext);
+    (void) xTlsDisconnectNoThread(pNetworkContext);
     xSemaphoreGive(mqttMutex);
   }
 
@@ -688,11 +673,11 @@ static void prvMQTTClientTask(void *pvParameters) {
     // Yay, then we can do loop processing
     if (_go && xEventGroupGetBits(s_networkEventGroup) & CORE_MQTT_CLIENT_CONNECTED_BIT) {
 
-      xSemaphoreTake(mqttMutex, portMAX_DELAY);
+      //xSemaphoreTake(mqttMutex, portMAX_DELAY);
       //printf("............... 1\n");
       MQTTStatus_t status = MQTT_ProcessLoop(&xMqttContext);
       //printf("............... 2\n");
-      xSemaphoreGive(mqttMutex);
+      //xSemaphoreGive(mqttMutex);
       portYIELD();
       vTaskDelay(1);  // Without this call, other tasks don't get a chance to acquire mqttMutex
 
@@ -738,8 +723,8 @@ esp_err_t mqtt_client_init(EventGroupHandle_t networkEventGroup) {
     // Mutex to protect MQTT loop and calls
     TransportInterface_t transport = {};
     transport.pNetworkContext = &xNetworkContext;
-    transport.send = espTlsTransportSend;
-    transport.recv = espTlsTransportRecv;
+    transport.send = espTlsTransportSendNoThread;
+    transport.recv = espTlsTransportRecvNoThread;
     transport.writev = nullptr;
 
     /* Fill the values for network buffer. */
@@ -802,6 +787,7 @@ esp_err_t mqtt_client_disconnect() {
   /* Send DISCONNECT. */
   xSemaphoreTake(mqttMutex, portMAX_DELAY);
   {
+    _go = false;
     mqttStatus = MQTT_Disconnect(&xMqttContext);
 
     if (mqttStatus != MQTTSuccess) {
@@ -810,8 +796,6 @@ esp_err_t mqtt_client_disconnect() {
       returnStatus = ESP_FAIL;
     }
 
-    // Wait for MQTT loop to terminate
-    _go = false;
   }
   xSemaphoreGive(mqttMutex);
 
@@ -820,8 +804,7 @@ esp_err_t mqtt_client_disconnect() {
   } while (mqtt_loop_task != nullptr);
 
   // Free memory associated with previous connection, if any
-  xTlsDisconnect(&xNetworkContext);
-  vSemaphoreDelete(xNetworkContext.xTlsContextSemaphore);
+  xTlsDisconnectNoThread(&xNetworkContext);
 
   return returnStatus;
 }
