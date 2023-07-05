@@ -267,6 +267,8 @@ void wifi_connect_init(EventGroupHandle_t networkEventGroup) {
      */
     wifi_prov_mgr_endpoint_register("custom-data", custom_prov_data_handler, NULL);
     wifi_prov_print_qr(service_name, username, pop, PROV_TRANSPORT_BLE);
+    // Flush output of console
+    printf("\n\n\n\n");
 
     // Wait for service to complete
     wifi_prov_mgr_wait();

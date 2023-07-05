@@ -66,6 +66,9 @@ static void _event_handler(void *arg, esp_event_base_t event_base, int32_t event
 
 extern "C" void app_main() {
   // esp_deep_sleep(100000000);
+
+  ESP_LOGI(TAG, "Hey AWS is great");
+
   ESP_ERROR_CHECK(esp_event_loop_create_default());
   gpio_install_isr_service(0);
 
@@ -77,8 +80,8 @@ extern "C" void app_main() {
   esp32_networking_init();
 
   // Control loop
-  control_loop_init();
-  control_loop_run();
+  //control_loop_init();
+  //control_loop_run();
 
   do {
     ESP_LOGI(TAG, "Memory heap: %lu, min: %lu", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
