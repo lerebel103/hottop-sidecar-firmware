@@ -21,15 +21,22 @@
 
 #define PROV_QR_VERSION         "v1"
 #define PROV_TRANSPORT_BLE      "ble"
-#define QRCODE_BASE_URL         "https://espressif.github.io/esp-jumpstart/qrcode.html"
 
-static esp_netif_t *s_netif_sta;
 
 /**
  * @brief The event group used to manage network events.
  */
 static EventGroupHandle_t xNetworkEventGroup;
 
+
+static char *_get_short_mac() {
+  static char mac[14];
+  uint8_t l_Mac[6];
+  esp_efuse_mac_get_default(l_Mac);
+  snprintf(mac, 14, "%02hX%02hX%02hX%02hX%02hX%02hX",
+           l_Mac[0], l_Mac[1], l_Mac[2], l_Mac[3], l_Mac[4], l_Mac[5]);
+  return mac;
+}
 
 /* Event handler for catching system events */
 static void event_handler(void *arg, esp_event_base_t event_base,
@@ -72,7 +79,9 @@ static void event_handler(void *arg, esp_event_base_t event_base,
         break;
       case WIFI_PROV_END:
         /* De-initialize manager once provisioning is finished */
+        ESP_LOGI(TAG, "Provisioning completed, stopping bluetooth");
         wifi_prov_mgr_deinit();
+        xEventGroupSetBits(xNetworkEventGroup, WIFI_PROVISIONED_BIT);
         break;
       default:
         break;
@@ -85,23 +94,19 @@ static void event_handler(void *arg, esp_event_base_t event_base,
 
     // Set host name as STA client
     char hostname[128];
-    char mac[14];
-    uint8_t l_Mac[6];
-    esp_efuse_mac_get_default(l_Mac);
-    snprintf(mac, 14, "%02hX%02hX%02hX%02hX%02hX%02hX",
-                    l_Mac[0], l_Mac[1], l_Mac[2], l_Mac[3], l_Mac[4], l_Mac[5]);
+    char* mac = _get_short_mac();
     sprintf(hostname, "%s-%s", identity_get()->thing_type, mac);
     ESP_ERROR_CHECK(esp_netif_set_hostname(event->esp_netif, hostname));
     ESP_LOGI(TAG, "Hostname set to  %s", hostname);
 
     /* Signal main application to continue execution */
-    xEventGroupSetBits( xNetworkEventGroup,WIFI_CONNECTED_BIT );
+    xEventGroupSetBits(xNetworkEventGroup, WIFI_CONNECTED_BIT);
 
     // Start SNTP
     sntp_sync_init(xNetworkEventGroup);
   } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
     ESP_LOGI(TAG, "Disconnected. Connecting to the AP again...");
-    xEventGroupClearBits( xNetworkEventGroup,WIFI_CONNECTED_BIT );
+    xEventGroupClearBits(xNetworkEventGroup, WIFI_CONNECTED_BIT);
     esp_wifi_connect();
   }
 }
@@ -127,25 +132,15 @@ static void get_device_service_name(char *service_name, size_t max) {
            ssid_prefix, eth_mac[3], eth_mac[4], eth_mac[5]);
 }
 
-/* Handler for the optional provisioning endpoint registered by the application.
- * The data format can be chosen by applications. Here, we are using plain ascii text.
- * Applications can choose to use other formats like protobuf, JSON, XML, etc.
- */
-esp_err_t custom_prov_data_handler(uint32_t session_id, const uint8_t *inbuf, ssize_t inlen,
+
+/* static esp_err_t custom_prov_data_handler(uint32_t session_id, const uint8_t *inbuf, ssize_t inlen,
                                    uint8_t **outbuf, ssize_t *outlen, void *priv_data) {
   if (inbuf) {
     ESP_LOGI(TAG, "Received data: %.*s", inlen, (char *) inbuf);
   }
-  char response[] = "SUCCESS";
-  *outbuf = (uint8_t *) strdup(response);
-  if (*outbuf == NULL) {
-    ESP_LOGE(TAG, "System out of memory");
-    return ESP_ERR_NO_MEM;
-  }
-  *outlen = strlen(response) + 1; /* +1 for NULL terminating byte */
 
   return ESP_OK;
-}
+} */
 
 static void wifi_prov_print_qr(const char *name, const char *username, const char *pop, const char *transport) {
   if (!name || !transport) {
@@ -156,11 +151,22 @@ static void wifi_prov_print_qr(const char *name, const char *username, const cha
   if (pop) {
     snprintf(payload, sizeof(payload), "{\"ver\":\"%s\",\"name\":\"%s\"" \
                     ",\"pop\":\"%s\",\"transport\":\"%s\"}",
-                    PROV_QR_VERSION, name, pop, transport);
+             PROV_QR_VERSION, name, pop, transport);
   }
   ESP_LOGI(TAG, "Scan this QR code from the provisioning application for Provisioning.");
-    esp_qrcode_config_t cfg = ESP_QRCODE_CONFIG_DEFAULT();
-    esp_qrcode_generate(&cfg, payload);
+  esp_qrcode_config_t cfg = ESP_QRCODE_CONFIG_DEFAULT();
+  esp_qrcode_generate(&cfg, payload);
+}
+
+static void revstr(uint8_t *str1, size_t len)
+{
+  uint8_t temp;
+  for (int i = 0; i < len/2; i++)
+  {
+    temp = str1[i];
+    str1[i] = str1[len - i - 1];
+    str1[len - i - 1] = temp;
+  }
 }
 
 void wifi_connect_init(EventGroupHandle_t networkEventGroup) {
@@ -175,119 +181,60 @@ void wifi_connect_init(EventGroupHandle_t networkEventGroup) {
   ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL));
 
   /* Initialize Wi-Fi including netif with default config */
-  s_netif_sta = esp_netif_create_default_wifi_sta();
+  esp_netif_create_default_wifi_sta();
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-
-  /* Configuration for the provisioning manager */
-  wifi_prov_mgr_config_t config = {
-      .scheme = wifi_prov_scheme_ble,
-      .scheme_event_handler = WIFI_PROV_SCHEME_BLE_EVENT_HANDLER_FREE_BTDM,
-      .app_event_handler = WIFI_PROV_EVENT_HANDLER_NONE
-  };
-
-  /* Initialize provisioning manager with the
-   * configuration parameters set above */
-  ESP_ERROR_CHECK(wifi_prov_mgr_init(config));
 
   /* Let's find out if the device is provisioned */
   bool provisioned = false;
   ESP_ERROR_CHECK(wifi_prov_mgr_is_provisioned(&provisioned));
+  xEventGroupClearBits(xNetworkEventGroup, WIFI_PROVISIONED_BIT);
 
   /* If device is not yet provisioned start provisioning service */
-  if (!provisioned) {
+  if (!provisioned && CONFIG_BLE_WIFI_PROV_ENABLED) {
     ESP_LOGI(TAG, "Starting provisioning");
 
-    /* What is the Device Service Name that we want
-     * This translates to :
-     *     - Wi-Fi SSID when scheme is wifi_prov_scheme_softap
-     *     - device name when scheme is wifi_prov_scheme_ble
-     */
+    wifi_prov_mgr_config_t config = {
+        .scheme = wifi_prov_scheme_ble,
+        .scheme_event_handler = WIFI_PROV_SCHEME_BLE_EVENT_HANDLER_FREE_BTDM,
+        .app_event_handler = WIFI_PROV_EVENT_HANDLER_NONE
+    };
+    ESP_ERROR_CHECK(wifi_prov_mgr_init(config));
+
     char service_name[12];
     get_device_service_name(service_name, sizeof(service_name));
 
-    /* This step is only useful when scheme is wifi_prov_scheme_ble. This will
- * set a custom 128 bit UUID which will be included in the BLE advertisement
- * and will correspond to the primary GATT service that provides provisioning
- * endpoints as GATT characteristics. Each GATT characteristic will be
- * formed using the primary service UUID as base, with different auto assigned
- * 12th and 13th bytes (assume counting starts from 0th byte). The client side
- * applications must identify the endpoints by reading the User Characteristic
- * Description descriptor (0x2901) for each characteristic, which contains the
- * endpoint name of the characteristic */
-    uint8_t custom_service_uuid[] = {
-        /* LSB <---------------------------------------
-         * ---------------------------------------> MSB */
-        0xfb, 0x41, 0x36, 0xd2, 0xf2, 0x4b, 0x11, 0xed,
-        0xb2, 0xa5, 0xb6, 0x19, 0x10, 0x59, 0xc7, 0xc3,
-    };
-
-    /* If your build fails with linker errors at this point, then you may have
-     * forgotten to enable the BT stack or BTDM BLE settings in the SDK (e.g. see
-     * the sdkconfig.defaults in the example project) */
+    uint8_t custom_service_uuid[16] = { };
+    uint64_t value = CONFIG_BLE_WIFI_PROV_CUSTOM_SERVICE_UUID_LOW;
+    memcpy(&custom_service_uuid[0], &value, 8);
+    value = CONFIG_BLE_WIFI_PROV_CUSTOM_SERVICE_UUID_HIGH;
+    memcpy(&custom_service_uuid[8], &value, 8);
+    revstr(custom_service_uuid, 16);
     wifi_prov_scheme_ble_set_service_uuid(custom_service_uuid);
 
+    // wifi_prov_mgr_endpoint_create("custom-data");
 
-    /* An optional endpoint that applications can create if they expect to
-     * get some additional custom data during provisioning workflow.
-     * The endpoint name can be anything of your choice.
-     * This call must be made before starting the provisioning.
-     */
-    wifi_prov_mgr_endpoint_create("custom-data");
-    /* Start provisioning service */
-
-    /* What is the security level that we want (0, 1, 2):
- *      - WIFI_PROV_SECURITY_0 is simply plain text communication.
- *      - WIFI_PROV_SECURITY_1 is secure communication which consists of secure handshake
- *          using X25519 key exchange and proof of possession (pop) and AES-CTR
- *          for encryption/decryption of messages.
- *      - WIFI_PROV_SECURITY_2 SRP6a based authentication and key exchange
- *        + AES-GCM encryption/decryption of messages
- */
     wifi_prov_security_t security = WIFI_PROV_SECURITY_1;
 
-    /* Do we want a proof-of-possession (ignored if Security 0 is selected):
-     *      - this should be a string with length > 0
-     *      - NULL if not used
-     */
-    const char *pop = "abcd1234";
+    /* Proof of possession is short mac */
+    const char *pop = _get_short_mac();
 
     /* This is the structure for passing security parameters
      * for the protocomm security 1.
      */
     wifi_prov_security1_params_t *sec_params = pop;
 
-    const char *username  = NULL;
-
+    const char *username = NULL;
     ESP_ERROR_CHECK(wifi_prov_mgr_start_provisioning(security, (const void *) sec_params, service_name, NULL));
-
-    /* The handler for the optional endpoint created above.
-     * This call must be made after starting the provisioning, and only if the endpoint
-     * has already been created above.
-     */
-    wifi_prov_mgr_endpoint_register("custom-data", custom_prov_data_handler, NULL);
+    // wifi_prov_mgr_endpoint_register("custom-data", custom_prov_data_handler, NULL);
     wifi_prov_print_qr(service_name, username, pop, PROV_TRANSPORT_BLE);
-    // Flush output of console
-    printf("\n\n\n\n");
 
-    // Wait for service to complete
-    wifi_prov_mgr_wait();
-
-    // Finally de-initialize the manager
-    wifi_prov_mgr_deinit();
-
-    // Do a restart, the simplest approach
-    esp_restart();
   } else {
-    // ALready provisioned
+    // Already provisioned
     ESP_LOGI(TAG, "Already provisioned, starting Wi-Fi STA");
-
-    /* We don't need the manager as device is already provisioned,
-     * so let's release its resources */
-    wifi_prov_mgr_deinit();
+    xEventGroupSetBits(xNetworkEventGroup, WIFI_PROVISIONED_BIT);
 
     /* Start Wi-Fi station */
     wifi_init_sta();
-
   }
 }

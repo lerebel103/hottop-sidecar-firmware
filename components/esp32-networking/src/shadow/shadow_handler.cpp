@@ -160,7 +160,6 @@ esp_err_t shadow_handler_update(device_shadow_handle_t handle, bool wait) {
   esp_err_t ret = ESP_OK;
 
   return ret;
-
 }
 
 esp_err_t shadow_handler_del(device_shadow_handle_t handle) {

@@ -66,9 +66,6 @@ static void _event_handler(void *arg, esp_event_base_t event_base, int32_t event
 
 extern "C" void app_main() {
   // esp_deep_sleep(100000000);
-
-  ESP_LOGI(TAG, "Hey AWS is great");
-
   ESP_ERROR_CHECK(esp_event_loop_create_default());
   gpio_install_isr_service(0);
 

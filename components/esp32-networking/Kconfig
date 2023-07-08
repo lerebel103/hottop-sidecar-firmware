@@ -32,5 +32,27 @@ menu "esp32-networking"
 
     endmenu # coreMQTT Config
 
+    menu "BLE Provisioning"
+
+    config BLE_WIFI_PROV_ENABLED
+        bool "Enables WiFi provisioning over BLE"
+        default y
+        help
+            Enable provisioning service
+
+    config BLE_WIFI_PROV_CUSTOM_SERVICE_UUID_HIGH
+        hex "High 64-bit service UUID for provisioning"
+        default 0xFB4136D2F24B11ED
+        help
+            Sets the service UUID of the BLE service during provisioning.
+
+    config BLE_WIFI_PROV_CUSTOM_SERVICE_UUID_LOW
+        hex "Low 64-bit service UUID for provisioning"
+        default 0xB2A5B6191059C7C3
+        help
+            Sets the service UUID of the BLE service during provisioning.
+
+    endmenu # BLE Provisioning
+
 endmenu # Golden Reference Integration 
 

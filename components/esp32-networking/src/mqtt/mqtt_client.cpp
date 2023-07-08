@@ -631,7 +631,7 @@ static void prvMQTTClientTask(void *pvParameters) {
   do {
     /* Wait for the device to be connected */
     xEventGroupWaitBits(s_networkEventGroup,
-                        SNTP_TIME_SYNCED_BIT | WIFI_CONNECTED_BIT,
+                        SNTP_TIME_SYNCED_BIT | WIFI_CONNECTED_BIT | WIFI_PROVISIONED_BIT,
                         pdFALSE,
                         pdTRUE,
                         portMAX_DELAY);
