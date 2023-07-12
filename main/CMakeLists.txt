@@ -7,6 +7,9 @@ file(GLOB_RECURSE COMPONENT_SRCS
         digital_input.cpp
         control_loop.cpp
         nvs.cpp
+        reset_button.cpp
+        pm_control.cpp
+        telemetry.cpp
         )
 
 

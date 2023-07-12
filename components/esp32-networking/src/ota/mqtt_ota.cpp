@@ -452,7 +452,7 @@ static void otaAppCallback(OtaJobEvent_t event, void *pData) {
         OTA_SetImageState(OtaImageStateRejected);
 
         // After testing phase completes, we need a manual restart
-        esp_event_post(CORE_MQTT_EVENT, CORE_MQTT_TEST_FAILED_RESTART, NULL, 0, portMAX_DELAY);
+        esp_event_post(CORE_MQTT_EVENT, CORE_MQTT_OTA_TRIGGER_RESTART, NULL, 0, portMAX_DELAY);
       }
 
       break;
@@ -511,7 +511,7 @@ static void _event_handler(void *arg, esp_event_base_t event_base, int32_t event
         OTA_Resume();
       }
     }
-  } else if (event_id == CORE_MQTT_TEST_FAILED_RESTART) {
+  } else if (event_id == CORE_MQTT_OTA_TRIGGER_RESTART) {
     ESP_LOGI(TAG, "Shutting OTA service");
     OTA_Shutdown(portMAX_DELAY, 1);
     ESP_LOGI(TAG, "Restarting platform");

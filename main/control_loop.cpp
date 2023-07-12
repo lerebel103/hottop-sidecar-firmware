@@ -4,6 +4,7 @@
 #include <esp_log.h>
 #include <esp_task_wdt.h>
 #include <freertos/semphr.h>
+#include <esp_event.h>
 #include "control_loop.h"
 #include "ssr_ctrl.h"
 #include "max31850.h"
@@ -12,6 +13,10 @@
 #include "balancer.h"
 #include "input_pwm_duty.h"
 #include "digital_input.h"
+#include "reset_button.h"
+#include "pm_control.h"
+#include "events.h"
+#include "telemetry.h"
 
 // Interval in MHz
 #define INTERVAL 1000000
@@ -110,7 +115,7 @@ static void _control() {
   }
 
   if (_can_control()) {
-    output_duty = (uint8_t)(input_duty * balance / 100.0 * MAX_SECONDARY_HEAT_RATIO);
+    output_duty = (uint8_t) (input_duty * balance / 100.0 * MAX_SECONDARY_HEAT_RATIO);
   }
 
   ESP_LOGI(TAG, "Motor=%d, Balance: %.1f, Input=%d, Output=%d, Fan=%d",
@@ -125,10 +130,7 @@ static void _control() {
 
 void control_loop_run() {
   semaphoreHandle = xSemaphoreCreateBinary();
-
-
   TaskHandle_t xTaskToNotify = xTaskGetCurrentTaskHandle();
-
   // As this is a control loop, we want it to be very high priority
   vTaskPrioritySet(xTaskToNotify, 6);
 
@@ -153,10 +155,18 @@ void control_loop_run() {
   ssr_ctrl_power_on(s_ssr1);
   ssr_ctrl_power_on(s_ssr2);
 
+  // Go to go
+  esp_event_post(MAIN_APP_EVENT, APP_READY, NULL, 0, portMAX_DELAY);
+
   do {
     if (xSemaphoreTake(semaphoreHandle, pdMS_TO_TICKS(1000)) == pdPASS) {
-        ESP_ERROR_CHECK(esp_task_wdt_reset());
-        _control();
+      // Restart if we are asked to
+      if (reset_button_is_triggered()) {
+        esp_restart();
+      }
+
+      ESP_ERROR_CHECK(esp_task_wdt_reset());
+      _control();
     }
   } while (_go);
 
@@ -174,11 +184,14 @@ void control_loop_stop() {
   _go = false;
 }
 
-void control_loop_init() {
+void control_loop_init(EventGroupHandle_t net_group) {
+  pm_control_init();
+  reset_button_init(GPIO_NUM_4);
   level_shifter_init();
   panel_inputs_init();
   balancer_init();
   digital_input_init(DRUM_MOTOR_SIGNAL_PIN);
+  telemetry_init(net_group);
 
   // Thermocouple amplifier
   max3185_devices_t found_devices = max31850_list(ONEWIRE_PIN);

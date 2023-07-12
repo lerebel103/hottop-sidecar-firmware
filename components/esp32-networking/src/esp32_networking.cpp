@@ -1,7 +1,5 @@
 #include "esp32_networking.h"
 
-#include <freertos/FreeRTOS.h>
-#include <freertos/event_groups.h>
 #include <esp_app_desc.h>
 
 #include "wifi/wifi_connect.h"
@@ -15,8 +13,8 @@
 
 static EventGroupHandle_t xNetworkEventGroup;
 
-void esp32_networking_init() {
-  xNetworkEventGroup = xEventGroupCreate();
+void esp32_networking_init(EventGroupHandle_t net_group) {
+  xNetworkEventGroup = net_group;
 
   ESP_ERROR_CHECK( nvs_init() );
   auto identity = identity_get();

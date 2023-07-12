@@ -387,7 +387,7 @@ int mqtt_client_publish(const MQTTPublishInfo_t *publishInfo, uint16_t ackWaitMS
   MQTTStatus_t mqttStatus = MQTTStatus_t::MQTTSuccess;
   uint16_t packetId = 0;
 
-  ESP_LOGI(TAG, "Publishing to %.*s", publishInfo->topicNameLength, publishInfo->pTopicName);
+  ESP_LOGD(TAG, "Publishing to %.*s", publishInfo->topicNameLength, publishInfo->pTopicName);
   do {
     xSemaphoreTake(mqttMutex, portMAX_DELAY);
     {
@@ -421,7 +421,7 @@ int mqtt_client_publish(const MQTTPublishInfo_t *publishInfo, uint16_t ackWaitMS
     if (returnStatus == EXIT_FAILURE) {
       ESP_LOGE(TAG, "Publish failed to %.*s", publishInfo->topicNameLength, publishInfo->pTopicName);
     } else {
-      ESP_LOGI(TAG, "Publishing success to %.*s", publishInfo->topicNameLength, publishInfo->pTopicName);
+      ESP_LOGD(TAG, "Publishing success to %.*s", publishInfo->topicNameLength, publishInfo->pTopicName);
     }
 
     // Don't kill CPU

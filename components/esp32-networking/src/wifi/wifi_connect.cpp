@@ -188,11 +188,11 @@ void wifi_connect_init(EventGroupHandle_t networkEventGroup) {
   /* Let's find out if the device is provisioned */
   bool provisioned = false;
   ESP_ERROR_CHECK(wifi_prov_mgr_is_provisioned(&provisioned));
-  xEventGroupClearBits(xNetworkEventGroup, WIFI_PROVISIONED_BIT);
 
   /* If device is not yet provisioned start provisioning service */
-  if (!provisioned && CONFIG_BLE_WIFI_PROV_ENABLED) {
+  if (CONFIG_BLE_WIFI_PROV_ENABLED && !provisioned) {
     ESP_LOGI(TAG, "Starting provisioning");
+    xEventGroupClearBits(xNetworkEventGroup, WIFI_PROVISIONED_BIT);
 
     wifi_prov_mgr_config_t config = {
         .scheme = wifi_prov_scheme_ble,
@@ -231,8 +231,10 @@ void wifi_connect_init(EventGroupHandle_t networkEventGroup) {
 
   } else {
     // Already provisioned
-    ESP_LOGI(TAG, "Already provisioned, starting Wi-Fi STA");
-    xEventGroupSetBits(xNetworkEventGroup, WIFI_PROVISIONED_BIT);
+    if(CONFIG_BLE_WIFI_PROV_ENABLED) {
+      ESP_LOGI(TAG, "Already provisioned, starting Wi-Fi STA");
+      xEventGroupSetBits(xNetworkEventGroup, WIFI_PROVISIONED_BIT);
+    }
 
     /* Start Wi-Fi station */
     wifi_init_sta();
