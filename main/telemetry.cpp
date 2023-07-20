@@ -112,7 +112,7 @@ static void _send_telemetry(void *) {
       if ((now - _last_metrics_time) > METRICS_INTERVAL_US ) {
         _defender_metrics_requested = true;
       }
-      ESP_LOGI(TAG, "Sending payloads %" PRIu64 " %" PRIu64, (now - _last_metrics_time), (uint64_t)METRICS_INTERVAL_US);
+      ESP_LOGD(TAG, "Sending payloads %" PRIu64 " %" PRIu64, (now - _last_metrics_time), (uint64_t)METRICS_INTERVAL_US);
 
       if (_defender_metrics_requested) {
         _send_defender_metrics();
