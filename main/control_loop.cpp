@@ -132,7 +132,7 @@ void control_loop_run() {
   semaphoreHandle = xSemaphoreCreateBinary();
   TaskHandle_t xTaskToNotify = xTaskGetCurrentTaskHandle();
   // As this is a control loop, we want it to be very high priority
-  vTaskPrioritySet(xTaskToNotify, configMAX_PRIORITIES - 1);
+  vTaskPrioritySet(xTaskToNotify,  7);
 
   ESP_ERROR_CHECK(gptimer_start(gptimer));
   _go = true;

@@ -197,7 +197,7 @@ void telemetry_init(EventGroupHandle_t net_group) {
   esp_event_handler_register(CORE_MQTT_EVENT, ESP_EVENT_ANY_ID, &_event_handler, nullptr);
 
   _go = true;
-  xTaskCreate(_send_telemetry, "send_telemetry", 3072, nullptr, 3, nullptr);
+  xTaskCreate(_send_telemetry, "send_telemetry", 3072, nullptr, tskIDLE_PRIORITY + 1, nullptr);
 
 
 }
