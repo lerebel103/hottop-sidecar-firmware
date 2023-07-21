@@ -3,7 +3,7 @@
 #include <freertos/event_groups.h>
 #include "wifi_connect.h"
 #include "qrcode.h"
-#include "sntp/sntp.h"
+#include "sntp/sntp_sync.h"
 #include "common/events_common.h"
 #include "common/identity.h"
 #include <esp_netif.h>
@@ -27,7 +27,8 @@
  * @brief The event group used to manage network events.
  */
 static EventGroupHandle_t xNetworkEventGroup;
-
+static wifi_metrics_t s_metrics = {};
+static int64_t _start_time;
 
 static char *_get_short_mac() {
   static char mac[14];
@@ -87,10 +88,15 @@ static void event_handler(void *arg, esp_event_base_t event_base,
         break;
     }
   } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+    s_metrics.connect_attempt_count++;
+    _start_time = esp_timer_get_time();
     esp_wifi_connect();
   } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
     ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
-    ESP_LOGI(TAG, "Connected with IP Address:" IPSTR, IP2STR(&event->ip_info.ip));
+    sprintf(s_metrics.ip_addr, IPSTR, IP2STR(&event->ip_info.ip));
+    sprintf(s_metrics.gw_addr, IPSTR, IP2STR(&event->ip_info.gw));
+    sprintf(s_metrics.nm_addr, IPSTR, IP2STR(&event->ip_info.netmask));
+    ESP_LOGI(TAG, "Connected with IP %s, GW %s, NM %s", s_metrics.ip_addr, s_metrics.gw_addr, s_metrics.nm_addr);
 
     // Set host name as STA client
     char hostname[128];
@@ -104,10 +110,14 @@ static void event_handler(void *arg, esp_event_base_t event_base,
 
     // Start SNTP
     sntp_sync_init(xNetworkEventGroup);
+    s_metrics.connected_count++;
+    s_metrics.connect_duration_ms = (esp_timer_get_time() - _start_time) / 1000;
   } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
     ESP_LOGI(TAG, "Disconnected. Connecting to the AP again...");
     xEventGroupClearBits(xNetworkEventGroup, WIFI_CONNECTED_BIT);
     esp_wifi_connect();
+    s_metrics.disconnected_count++;
+    _start_time = esp_timer_get_time();
   }
 }
 
@@ -168,6 +178,20 @@ static void revstr(uint8_t *str1, size_t len)
     str1[len - i - 1] = temp;
   }
 }
+
+wifi_metrics_t wifi_connect_get_metrics() {
+  // Populate metrics we haven't yet populated
+  wifi_ap_record_t record;
+  esp_wifi_sta_get_ap_info(&record);
+  sprintf(s_metrics.ssid, "%s", record.ssid);
+  sprintf(s_metrics.ap_bssid, "%02hx:%02hx:%02hx:%02hx:%02hx:%02hx", record.bssid[0], record.bssid[1], record.bssid[2],
+          record.bssid[3], record.bssid[4], record.bssid[5]);
+  s_metrics.channel = record.primary;
+  s_metrics.rssi = record.rssi;
+
+  return s_metrics;
+}
+
 
 void wifi_connect_init(EventGroupHandle_t networkEventGroup) {
   xNetworkEventGroup = networkEventGroup;

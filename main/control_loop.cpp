@@ -137,16 +137,7 @@ void control_loop_run() {
   ESP_ERROR_CHECK(gptimer_start(gptimer));
   _go = true;
 
-  esp_task_wdt_config_t wdt_cfg = {
-      .timeout_ms= (int) (INTERVAL * 1.5),
-      .idle_core_mask = (1 << portNUM_PROCESSORS) - 1,    // Bitmask of all cores
-      .trigger_panic=true
-  };
-
-#if !CONFIG_ESP_TASK_WDT_INIT
-  ESP_ERROR_CHECK(esp_task_wdt_init(&wdt_cfg));
-#endif
-  ESP_ERROR_CHECK(esp_task_wdt_reconfigure(&wdt_cfg));
+  // Add this task to the watch dog timer
   ESP_ERROR_CHECK(esp_task_wdt_add(xTaskToNotify));
 
   // We are good to go

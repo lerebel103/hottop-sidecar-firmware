@@ -2,7 +2,7 @@
 #include <freertos/task.h>
 #include <freertos/event_groups.h>
 
-#include "sntp.h"
+#include "sntp_sync.h"
 #include <esp_log.h>
 #include <esp_attr.h>
 #include <lwip/err.h>
@@ -23,7 +23,7 @@ static EventGroupHandle_t xNetworkEventGroup;
 char g_system_tz[MAX_TZ_LEN];
 
 static TickType_t g_start_tick = 0;
-static int g_sntp_sync_duration = -1;
+static sntp_metrics_t s_metrics = {};
 
 static void apply_tz(const char *timezone) {
   ESP_LOGI(TAG, "Setting POSIX timezone to %s", timezone);
@@ -44,9 +44,10 @@ static void time_synced_handler(struct timeval *new_time) {
 
   // This is only possible for the first call back, we won't know when the start is as NTP runs
   // on regular intervals later on (every hour), so cannot gauge how long subsequent syncs take
-  if (g_sntp_sync_duration <= 0) {
-    g_sntp_sync_duration = xTaskGetTickCount() * portTICK_PERIOD_MS - g_start_tick;
+  if (s_metrics.sync_duration_ms == 0) {
+    s_metrics.sync_duration_ms = xTaskGetTickCount() * portTICK_PERIOD_MS - g_start_tick;
   }
+  s_metrics.last_sync_time = now;
 }
 
 static void initialize_sntp(const char* primary_server) {
@@ -95,6 +96,6 @@ void sntp_sync_init(EventGroupHandle_t networkEventGroup, const char* primary_se
   initialize_sntp(primary_server);
 }
 
-int sntp_sync_get_sync_duration() {
-  return g_sntp_sync_duration;
+sntp_metrics_t sntp_sync_get_metrics() {
+  return s_metrics;
 }

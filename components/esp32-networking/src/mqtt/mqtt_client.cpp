@@ -194,8 +194,10 @@ static MQTTContext_t xMqttContext = {};
 static NetworkContext_t xNetworkContext = {};
 static MQTTFixedBuffer_t networkBuffer;
 static EventGroupHandle_t s_networkEventGroup;
+static mqtt_metrics_t s_metrics = {};
 
 ESP_EVENT_DEFINE_BASE(MQTT_PROVISIONING_EVENT);
+
 
 static bool mqtt_is_initialised() {
   return mqtt_loop_task != nullptr;
@@ -387,6 +389,9 @@ int mqtt_client_publish(const MQTTPublishInfo_t *publishInfo, uint16_t ackWaitMS
   MQTTStatus_t mqttStatus = MQTTStatus_t::MQTTSuccess;
   uint16_t packetId = 0;
 
+  s_metrics.tx_pkt_count++;
+  s_metrics.tx_bytes_count += publishInfo->payloadLength;
+
   ESP_LOGD(TAG, "Publishing to %.*s", publishInfo->topicNameLength, publishInfo->pTopicName);
   do {
     xSemaphoreTake(mqttMutex, portMAX_DELAY);
@@ -451,6 +456,8 @@ static void eventCallback(MQTTContext_t *pMqttContext,
 
   if ((pPacketInfo->type & 0xF0U) == MQTT_PACKET_TYPE_PUBLISH) {
     /* Handle incoming publish. */
+    s_metrics.rx_pkt_count++;
+    s_metrics.rx_bytes_count += pDeserializedInfo->pPublishInfo->payloadLength;
     SubscriptionManager_DispatchHandler(&xMqttContext, pDeserializedInfo->pPublishInfo);
   } else {
     /* Handle other packets. */
@@ -637,10 +644,14 @@ static void prvMQTTClientTask(void *pvParameters) {
                         portMAX_DELAY);
 
     if (!(xEventGroupGetBits(s_networkEventGroup) & CORE_MQTT_CLIENT_CONNECTED_BIT)) {
+      s_metrics.connect_attempt_count++;
+      uint64_t start = esp_timer_get_time();
       auto returnStatus = connectToServerWithBackoffRetries(&xNetworkContext, &xMqttContext, &clientSessionPresent,
                                                             &brokerSessionPresent);
       if (returnStatus == EXIT_SUCCESS && xMqttContext.connectStatus == MQTTConnected) {
         ESP_LOGI(TAG, "--> MQTT broker Connected");
+        s_metrics.connected_count++;
+        s_metrics.connect_duration_ms = (esp_timer_get_time() - start) / 1000;
         xEventGroupSetBits(s_networkEventGroup, CORE_MQTT_CLIENT_CONNECTED_BIT);
         esp_event_post(CORE_MQTT_EVENT, CORE_MQTT_CONNECTED_EVENT, NULL, 0, portMAX_DELAY);
       }
@@ -654,6 +665,7 @@ static void prvMQTTClientTask(void *pvParameters) {
         // Then we have a disconnect
         if (xEventGroupGetBits(s_networkEventGroup) & CORE_MQTT_CLIENT_CONNECTED_BIT) {
           ESP_LOGW(TAG, "--> MQTT broker disconnected");
+          s_metrics.disconnected_count++;
           xEventGroupClearBits(s_networkEventGroup, CORE_MQTT_CLIENT_CONNECTED_BIT);
           esp_event_post(CORE_MQTT_EVENT, CORE_MQTT_DISCONNECTED_EVENT, NULL, 0, portMAX_DELAY);
         }
@@ -740,6 +752,13 @@ esp_err_t mqtt_client_init(EventGroupHandle_t networkEventGroup) {
 
   return returnStatus;
 }
+
+/*-----------------------------------------------------------*/
+
+mqtt_metrics_t mqtt_client_get_metrics() {
+  return s_metrics;
+}
+
 
 /*-----------------------------------------------------------*/
 
