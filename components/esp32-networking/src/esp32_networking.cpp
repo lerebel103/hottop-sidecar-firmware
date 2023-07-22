@@ -1,7 +1,6 @@
 #include "esp32_networking.h"
 
 #include <esp_app_desc.h>
-
 #include "wifi/wifi_connect.h"
 #include "fleet_provisioning/mqtt_provision.h"
 #include "common/identity.h"
@@ -13,10 +12,13 @@
 
 static EventGroupHandle_t xNetworkEventGroup;
 
+
+
 void esp32_networking_init(EventGroupHandle_t net_group) {
   xNetworkEventGroup = net_group;
 
   ESP_ERROR_CHECK( nvs_init() );
+
   auto identity = identity_get();
   ESP_LOGI(TAG, "--------------------------------------------------------------------------------");
   ESP_LOGI(TAG, "    Thing ID:      %s", identity_thing_id());

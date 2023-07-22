@@ -26,5 +26,5 @@ struct device_shadow_cfg_t {
 
 esp_err_t shadow_handler_init(struct device_shadow_cfg_t cfg, device_shadow_handle_t* ret_handle);
 esp_err_t shadow_handler_get(device_shadow_handle_t handle);
-esp_err_t shadow_handler_update(device_shadow_handle_t handle);
+esp_err_t shadow_handler_update(device_shadow_handle_t handle, char* payload, size_t payload_len);
 esp_err_t shadow_handler_del(device_shadow_handle_t handle);

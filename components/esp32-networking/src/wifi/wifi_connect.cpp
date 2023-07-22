@@ -179,7 +179,6 @@ static void revstr(uint8_t *str1, size_t len)
   }
 }
 
-#include "lwip/stats.h"
 
 wifi_metrics_t wifi_connect_get_metrics() {
   // Populate metrics we haven't yet populated
@@ -190,10 +189,6 @@ wifi_metrics_t wifi_connect_get_metrics() {
           record.bssid[3], record.bssid[4], record.bssid[5]);
   s_metrics.channel = record.primary;
   s_metrics.rssi = record.rssi;
-
-  //lwip_stats
-
-  //esp_wifi_statis_dump();
 
   return s_metrics;
 }

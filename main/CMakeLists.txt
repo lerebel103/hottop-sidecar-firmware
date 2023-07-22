@@ -9,6 +9,8 @@ file(GLOB_RECURSE COMPONENT_SRCS
         nvs.cpp
         reset_button.cpp
         pm_control.cpp
+        app_metrics.cpp
+        device_info.cpp
         telemetry.cpp
         )
 

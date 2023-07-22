@@ -24,9 +24,8 @@ struct device_shadow_t {
 };
 
 void null_shadow_handler(MQTTContext_t *, MQTTPublishInfo_t *pxPublishInfo) {
-  ESP_LOGI(TAG, "Receive into NULL shadow handler, topic %.*s",
-           pxPublishInfo->topicNameLength, pxPublishInfo->pTopicName);
-  ESP_LOGI(TAG, "Payload ps %.*s",
+  ESP_LOGI(TAG, "Receive into NULL shadow handler, topic %.*s: %.*s",
+           pxPublishInfo->topicNameLength, pxPublishInfo->pTopicName,
            pxPublishInfo->payloadLength, (const char *) pxPublishInfo->pPayload);
 }
 
@@ -155,11 +154,20 @@ esp_err_t shadow_handler_get(device_shadow_handle_t handle) {
   return status == EXIT_SUCCESS ? ESP_OK : ESP_FAIL;
 }
 
-esp_err_t shadow_handler_update(device_shadow_handle_t handle, bool wait) {
+esp_err_t shadow_handler_update(device_shadow_handle_t handle, char* payload, size_t payload_len) {
   ESP_RETURN_ON_FALSE(handle, ESP_ERR_INVALID_ARG, TAG, "shadow handler instance is null");
-  esp_err_t ret = ESP_OK;
+  MQTTPublishInfo_t publishInfo = {
+      .qos = MQTTQoS_t::MQTTQoS1,
+      .retain = false,
+      .dup = false,
+      .pTopicName = handle->topic_update_pub,
+      .topicNameLength = (uint16_t) strlen(handle->topic_update_pub),
+      .pPayload = payload,
+      .payloadLength = payload_len,
+  };
 
-  return ret;
+  int status = mqtt_client_publish(&publishInfo, UINT16_MAX);
+  return status == EXIT_SUCCESS ? ESP_OK : ESP_FAIL;
 }
 
 esp_err_t shadow_handler_del(device_shadow_handle_t handle) {

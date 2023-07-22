@@ -17,6 +17,7 @@
 #include "pm_control.h"
 #include "events.h"
 #include "telemetry.h"
+#include "app_metrics.h"
 
 // Interval in MHz
 #define INTERVAL 1000000
