@@ -182,7 +182,7 @@ static void _send_telemetry(void *) {
 
     uint64_t delta = esp_timer_get_time() - now;
     if (delta < TELEMETRY_INTERVAL_USEC) {
-      esp_rom_delay_us(TELEMETRY_INTERVAL_USEC - delta);
+      vTaskDelay(pdMS_TO_TICKS((TELEMETRY_INTERVAL_USEC - delta))/1000);
     }
   } while (_go);
 }
@@ -257,7 +257,7 @@ void telemetry_init(EventGroupHandle_t net_group) {
   esp_event_handler_register(CORE_MQTT_EVENT, ESP_EVENT_ANY_ID, &_event_handler, nullptr);
 
   _go = true;
-  xTaskCreate(_send_telemetry, "send_telemetry", 3072, nullptr, tskIDLE_PRIORITY + 1, nullptr);
+  xTaskCreate(_send_telemetry, "send_telemetry", 3072, nullptr, 4, nullptr);
 
 
 }

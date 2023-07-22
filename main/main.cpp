@@ -42,7 +42,7 @@ void get_shadow_handler(MQTTContext_t * ctx, MQTTPublishInfo_t *pxPublishInfo) {
 
 
 extern "C" void app_main() {
-  _generate_zero_signal();
+  //_generate_zero_signal();
   ESP_ERROR_CHECK(esp_event_loop_create_default());
   gpio_install_isr_service(0);
   xNetworkEventGroup = xEventGroupCreate();
