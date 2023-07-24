@@ -39,13 +39,13 @@ static void _send_status() {
     "loop_count": %)" PRIu32 R"(,
     "tc_temp": %f,
     "junction_temp": %f,
-    "tc_status": %)" PRIu8 R"(",
-    "tc_read_error_count": %)" PRIu32 R"(,
+    "tc_status": %)" PRIu8 R"(,
+    "tc_error_count": %)" PRIu32 R"(,
     "motor_on": %)" PRIu8 R"(,
-    "fan_duty": %f,
+    "fan_duty": %)" PRIu8 R"(,
     "balance": %f,
-    "input_duty": %f,
-    "output_duty": %f
+    "input_duty": %)" PRIu8 R"(,
+    "output_duty": %)" PRIu8 R"(
   })";
   auto control_state = controller_get_state();
   sprintf(payload, format, (uint32_t)time(nullptr),
@@ -53,7 +53,7 @@ static void _send_status() {
           control_state.tc_temp,
           control_state.junction_temp,
           control_state.tc_status,
-          control_state.tc_read_error_count,
+          control_state.tc_error_count,
           control_state.motor_on,
           control_state.fan_duty,
           control_state.balance,

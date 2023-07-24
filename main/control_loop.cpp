@@ -71,21 +71,21 @@ static bool _temperature_ok() {
     } else {
       if (elm_temp.thermocouple_status & MAX31850_TC_STATUS_OPEN_CIRCUIT) {
         ESP_LOGE(TAG, "Unable to run, thermocouple fault OPEN CIRCUIT");
-        s_state.tc_read_error_count++;
+        s_state.tc_error_count++;
         s_state.tc_status = MAX31850_TC_STATUS_OPEN_CIRCUIT;
       } else if (elm_temp.thermocouple_status & MAX31850_TC_STATUS_SHORT_GND) {
         ESP_LOGE(TAG, "Unable to run, thermocouple fault SHORT TO GROUND");
-        s_state.tc_read_error_count++;
+        s_state.tc_error_count++;
         s_state.tc_status = MAX31850_TC_STATUS_SHORT_GND;
       } else if (elm_temp.thermocouple_status & MAX31850_TC_STATUS_SHORT_VCC) {
         ESP_LOGE(TAG, "Unable to run, thermocouple fault SHORT TO VCC");
-        s_state.tc_read_error_count++;
+        s_state.tc_error_count++;
         s_state.tc_status = MAX31850_TC_STATUS_SHORT_VCC;
       }
     }
   } else {
     ESP_LOGE(TAG, "Unable to run, error reading thermocouple data.");
-    s_state.tc_read_error_count++;
+    s_state.tc_error_count++;
     s_state.tc_status = 255;
   }
 

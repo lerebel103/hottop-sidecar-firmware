@@ -17,7 +17,7 @@ struct control_state_t {
   uint8_t tc_status;
 
   // Temperature read error count
-  uint32_t tc_read_error_count;
+  uint32_t tc_error_count;
 
   // Motor on/off
   bool motor_on;
