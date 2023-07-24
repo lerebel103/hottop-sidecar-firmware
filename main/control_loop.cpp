@@ -44,6 +44,7 @@ static input_pwm_handle_t s_fan_pwm_in;
 static ssr_ctrl_handle_t s_ssr1 = nullptr;
 static ssr_ctrl_handle_t s_ssr2 = nullptr;
 static uint64_t s_max31850_addr = 0;
+static control_state_t s_state = {};
 
 /*
  * Checks that the TC and environmental temperatures are within acceptable range
@@ -56,6 +57,9 @@ static bool _temperature_ok() {
   if (elm_temp.is_valid) {
     if (elm_temp.thermocouple_status == MAX31850_TC_STATUS_OK) {
       ESP_LOGI(TAG, "Thermocouple=%.2fC, Board=%.2fC", elm_temp.thermocouple_temp, elm_temp.junction_temp);
+      s_state.tc_status = 0;
+      s_state.tc_temp = elm_temp.thermocouple_temp;
+      s_state.junction_temp = elm_temp.junction_temp;
 
       // We want to make sure we are under max temperatures allowed
       if (elm_temp.thermocouple_temp <= TEMPERATURE_TC_MAX && elm_temp.junction_temp < TEMPERATURE_BOARD_MAX) {
@@ -67,14 +71,22 @@ static bool _temperature_ok() {
     } else {
       if (elm_temp.thermocouple_status & MAX31850_TC_STATUS_OPEN_CIRCUIT) {
         ESP_LOGE(TAG, "Unable to run, thermocouple fault OPEN CIRCUIT");
+        s_state.tc_read_error_count++;
+        s_state.tc_status = MAX31850_TC_STATUS_OPEN_CIRCUIT;
       } else if (elm_temp.thermocouple_status & MAX31850_TC_STATUS_SHORT_GND) {
         ESP_LOGE(TAG, "Unable to run, thermocouple fault SHORT TO GROUND");
+        s_state.tc_read_error_count++;
+        s_state.tc_status = MAX31850_TC_STATUS_SHORT_GND;
       } else if (elm_temp.thermocouple_status & MAX31850_TC_STATUS_SHORT_VCC) {
         ESP_LOGE(TAG, "Unable to run, thermocouple fault SHORT TO VCC");
+        s_state.tc_read_error_count++;
+        s_state.tc_status = MAX31850_TC_STATUS_SHORT_VCC;
       }
     }
   } else {
     ESP_LOGE(TAG, "Unable to run, error reading thermocouple data.");
+    s_state.tc_read_error_count++;
+    s_state.tc_status = 255;
   }
 
   return is_ok;
@@ -101,33 +113,38 @@ static IRAM_ATTR bool _on_alarm_cb(gptimer_handle_t timer, const gptimer_alarm_e
 
 /* Do it, one loop iteration */
 static void _control() {
-  uint8_t input_duty;
-  ESP_ERROR_CHECK(input_pwm_get_duty(s_heat_pwm_in, input_duty));
-  uint8_t fan_duty;
-  ESP_ERROR_CHECK(input_pwm_get_duty(s_fan_pwm_in, fan_duty));
+  s_state.loop_count++;
 
-  uint8_t output_duty = 0;
-  double balance = balance_read_percent();
+  ESP_ERROR_CHECK(input_pwm_get_duty(s_heat_pwm_in, s_state.input_duty));
+  ESP_ERROR_CHECK(input_pwm_get_duty(s_fan_pwm_in, s_state.fan_duty));
 
-  bool motor_on = digital_input_is_on(DRUM_MOTOR_SIGNAL_PIN);
-  if (!motor_on) {
+  s_state.output_duty = 0;
+  s_state.balance = balance_read_percent();
+
+  s_state.motor_on = digital_input_is_on(DRUM_MOTOR_SIGNAL_PIN);
+  if (!s_state.motor_on) {
     // Can't apply heat to stationary drum, bad news
-    input_duty = 0;
+    s_state.input_duty = 0;
   }
 
   if (_can_control()) {
-    output_duty = (uint8_t) (input_duty * balance / 100.0 * MAX_SECONDARY_HEAT_RATIO);
+    s_state.output_duty = (uint8_t) (s_state.input_duty * s_state.balance / 100.0 * MAX_SECONDARY_HEAT_RATIO);
   }
 
   ESP_LOGI(TAG, "Motor=%d, Balance: %.1f, Input=%d, Output=%d, Fan=%d",
-           motor_on, balance, input_duty, output_duty, fan_duty);
+           s_state.motor_on, s_state.balance, s_state.input_duty, s_state.output_duty, s_state.fan_duty);
 
-  ssr_ctrl_set_duty(s_ssr1, input_duty);
-  ssr_ctrl_set_duty(s_ssr2, output_duty);
+  ssr_ctrl_set_duty(s_ssr1, s_state.input_duty);
+  ssr_ctrl_set_duty(s_ssr2, s_state.output_duty);
 
   ESP_LOGI(TAG, "Memory heap: %lu, min: %lu", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
   ESP_LOGI(TAG, ".");
 }
+
+control_state_t controller_get_state() {
+  return s_state;
+}
+
 
 void control_loop_run() {
   semaphoreHandle = xSemaphoreCreateBinary();

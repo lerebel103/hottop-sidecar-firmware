@@ -17,6 +17,7 @@
 #include <esp_event.h>
 #include <cstring>
 #include <ctime>
+#include "control_loop.h"
 
 #define TAG "telemetry"
 #define TELEMETRY_INTERVAL_USEC (5000000)
@@ -33,8 +34,31 @@ static char payload[PAYLOAD_MAX_SIZE];
 
 
 static void _send_status() {
-
-  strcpy(payload, "{\"test\": 1}");
+  static const char* format = R"({
+    "timestamp": %)" PRIu32 R"(,
+    "loop_count": %)" PRIu32 R"(,
+    "tc_temp": %f,
+    "junction_temp": %f,
+    "tc_status": %)" PRIu8 R"(",
+    "tc_read_error_count": %)" PRIu32 R"(,
+    "motor_on": %)" PRIu8 R"(,
+    "fan_duty": %f,
+    "balance": %f,
+    "input_duty": %f,
+    "output_duty": %f
+  })";
+  auto control_state = controller_get_state();
+  sprintf(payload, format, (uint32_t)time(nullptr),
+          control_state.loop_count,
+          control_state.tc_temp,
+          control_state.junction_temp,
+          control_state.tc_status,
+          control_state.tc_read_error_count,
+          control_state.motor_on,
+          control_state.fan_duty,
+          control_state.balance,
+          control_state.input_duty,
+          control_state.output_duty);
 
   MQTTPublishInfo_t publishInfo = {
       .qos = MQTTQoS_t::MQTTQoS1,
@@ -45,6 +69,8 @@ static void _send_status() {
       .pPayload = payload,
       .payloadLength = strlen(payload),
   };
+
+  printf("%s\n", payload);
 
   // Send as best effort, not fussed
   mqtt_client_publish(&publishInfo, 0);
