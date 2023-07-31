@@ -88,9 +88,6 @@ static void _event_handler(void *arg, esp_event_base_t event_base, int32_t event
       // Only do shadows when we are not provisioning
       auto *handle = (device_shadow_t *) arg;
       _subscribe(handle);
-
-      // Now fetch shadow
-      shadow_handler_get(handle);
     }
   }
 }

@@ -12,6 +12,8 @@ file(GLOB_RECURSE COMPONENT_SRCS
         app_metrics.cpp
         device_info.cpp
         telemetry.cpp
+        app_config.cpp
+        utils.cpp
         )
 
 

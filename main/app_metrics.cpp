@@ -3,16 +3,18 @@
 #include <esp_log.h>
 #include <ctime>
 #include <cstring>
+#include <esp_event.h>
 #include "app_metrics.h"
 #include "shadow/shadow_handler.h"
 #include "common/identity.h"
 #include "wifi/wifi_connect.h"
 #include "mqtt/mqtt_client.h"
 #include "sntp/sntp_sync.h"
+#include "common/events_common.h"
+#include "fleet_provisioning/mqtt_provision.h"
 
 #define TAG "app_metrics"
 #define NVS_STATS_NAMESPACE "stats"
-#define REPORT_INTERVAL_MINUTES 30
 #define TOPIC_MAX_SIZE 128
 
 struct device_metrics_t {
@@ -107,7 +109,7 @@ void app_metrics_send(char *buffer, size_t max_len) {
                         mqtt_metrics.rx_pkt_count, mqtt_metrics.rx_bytes_count);
 
   _last_report_time = report_id;
-  printf("%.*s\n", len, buffer);
+  ESP_LOGI(TAG, "%.*s\n", len, buffer);
 
   MQTTPublishInfo_t publishInfo = {
       .qos = MQTTQoS_t::MQTTQoS1,
@@ -124,8 +126,15 @@ void app_metrics_send(char *buffer, size_t max_len) {
 
 }
 
-bool app_metrics_update_required() {
-  return (time(nullptr) - _last_report_time) > (REPORT_INTERVAL_MINUTES * 60);
+bool app_metrics_update_required(int interval_sec) {
+  return (time(nullptr) - _last_report_time) > (interval_sec);
+}
+
+static void _event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
+  if (event_id == CORE_MQTT_CONNECTED_EVENT && !mqtt_provisioning_active()) {
+    // Refresh metrics on new connection
+    _last_report_time = 0;
+  }
 }
 
 void app_metrics_init() {
@@ -133,6 +142,8 @@ void app_metrics_init() {
 
   // Regular telemetry
   sprintf(metrics_topic, "%s/%s/telemetry/metrics", CMAKE_THING_TYPE, identity_thing_id());
+  // Register connect events so we can send shadow on connect
+  ESP_ERROR_CHECK(esp_event_handler_register(CORE_MQTT_EVENT, ESP_EVENT_ANY_ID, &_event_handler, nullptr));
 
   ESP_LOGI(TAG, " >>>>>>>>>>>>>>>>>> Boot count: %" PRIu32 "\n", s_device_metrics.boot_count);
 }

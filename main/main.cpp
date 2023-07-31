@@ -33,23 +33,14 @@ static void _generate_zero_signal() {
 }
 
 
-void get_shadow_handler(MQTTContext_t * ctx, MQTTPublishInfo_t *pxPublishInfo) {
-  ESP_LOGI(TAG, "Receive shadow topic %.*s",
-           pxPublishInfo->topicNameLength, pxPublishInfo->pTopicName);
-  ESP_LOGI(TAG, "Shadow ps %.*s",
-           pxPublishInfo->payloadLength, (const char*)pxPublishInfo->pPayload);
-}
-
-
 extern "C" void app_main() {
   //_generate_zero_signal();
+  esp_log_level_set("coreMQTT", ESP_LOG_ERROR);
+
   ESP_ERROR_CHECK(esp_event_loop_create_default());
+
   gpio_install_isr_service(0);
   xNetworkEventGroup = xEventGroupCreate();
-
-  device_shadow_cfg_t shadow_cfg = {.name = "config", .get = get_shadow_handler};
-  device_shadow_handle_t shadow_handle;
-  shadow_handler_init(shadow_cfg, &shadow_handle);
 
   esp32_networking_init(xNetworkEventGroup);
   control_loop_init(xNetworkEventGroup);

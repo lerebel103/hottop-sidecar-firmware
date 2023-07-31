@@ -50,5 +50,5 @@ void device_info_init() {
   // This will push our app info as a static shadow
   _update_required = true;
   device_shadow_cfg_t shadow_cfg = {.name = "device-info", .get = null_shadow_handler, .deleted = _deleted_handler};
-  shadow_handler_init(shadow_cfg, &shadow_handle);
+  ESP_ERROR_CHECK(shadow_handler_init(shadow_cfg, &shadow_handle));
 }

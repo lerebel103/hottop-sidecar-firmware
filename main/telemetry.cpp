@@ -5,29 +5,35 @@
 #include "common/events_common.h"
 #include "fleet_provisioning/mqtt_provision.h"
 #include "defender.h"
-#include "core_mqtt.h"
-#include "mqtt/mqtt_subscription_manager.h"
-#include "wifi/wifi_connect.h"
 #include "sntp/sntp_sync.h"
 #include "app_metrics.h"
 #include "device_info.h"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-#include <esp_event.h>
 #include <cstring>
 #include <ctime>
+#include <nvs.h>
 #include "control_loop.h"
+#include "app_config.h"
+#include "utils.h"
 
 #define TAG "telemetry"
-#define TELEMETRY_INTERVAL_USEC (5000000)
+#define DEFAULT_STATUS_INTERVAL_SEC (5)
+#define DEFAULT_METRICS_INTERVAL_SEC (60*30)
+
 #define TOPIC_MAX_SIZE (128)
 #define PAYLOAD_MAX_SIZE (1024)
-#define METRICS_INTERVAL_US (60*1e6)
 
 static EventGroupHandle_t xNetworkEventGroup;
 static bool _go = false;
 static uint64_t _last_metrics_time = 0;
+
+static telemetry_cfg_t s_cfg = {
+    .status_interval_s = DEFAULT_STATUS_INTERVAL_SEC,
+    .metrics_interval_s = DEFAULT_METRICS_INTERVAL_SEC,
+};
+
 
 static char info_topic[TOPIC_MAX_SIZE];
 static char payload[PAYLOAD_MAX_SIZE];
@@ -48,7 +54,7 @@ static void _send_status() {
     "output_duty": %)" PRIu8 R"(
   })";
   auto control_state = controller_get_state();
-  sprintf(payload, format, (uint32_t)time(nullptr),
+  size_t len = sprintf(payload, format, (uint32_t)time(nullptr),
           control_state.loop_count,
           control_state.tc_temp,
           control_state.junction_temp,
@@ -67,13 +73,11 @@ static void _send_status() {
       .pTopicName = info_topic,
       .topicNameLength = (uint16_t) strlen(info_topic),
       .pPayload = payload,
-      .payloadLength = strlen(payload),
+      .payloadLength = len,
   };
 
-  printf("%s\n", payload);
-
-  // Send as best effort, not fussed
-  mqtt_client_publish(&publishInfo, 0);
+  ESP_LOGD(TAG, "%.*s\n", len, payload);
+  mqtt_client_publish(&publishInfo, CONFIG_MQTT_ACK_TIMEOUT_MS);
 }
 
 static void _send_telemetry(void *) {
@@ -90,12 +94,15 @@ static void _send_telemetry(void *) {
     bool ota_in_progress = xEventGroupGetBits(xNetworkEventGroup) & CORE_MQTT_OTA_IN_PROGRESS_BIT;
     if (!mqtt_provisioning_active() && !ota_in_progress) {
 
-      ESP_LOGD(TAG, "Sending payloads %" PRIu64 " %" PRIu64, (now - _last_metrics_time), (uint64_t)METRICS_INTERVAL_US);
+      ESP_LOGD(TAG, "Sending payloads %" PRIu64, (now - _last_metrics_time));
 
       if (device_info_update_required()) {
         device_info_send(payload, PAYLOAD_MAX_SIZE);
       }
-      if (app_metrics_update_required()) {
+      if(app_config_update_required()) {
+        app_config_update_send(payload, PAYLOAD_MAX_SIZE);
+      }
+      if (app_metrics_update_required(s_cfg.metrics_interval_s)) {
         app_metrics_send(payload, PAYLOAD_MAX_SIZE);
       }
 
@@ -103,32 +110,53 @@ static void _send_telemetry(void *) {
     }
 
     uint64_t delta = esp_timer_get_time() - now;
-    if (delta < TELEMETRY_INTERVAL_USEC) {
-      vTaskDelay(pdMS_TO_TICKS((TELEMETRY_INTERVAL_USEC - delta))/1000);
+    auto interval = (uint64_t)(s_cfg.status_interval_s / 1e6);
+    if (delta < interval) {
+      vTaskDelay(pdMS_TO_TICKS((interval - delta))/1000);
     }
   } while (_go);
 }
 
-static void _event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
-  if (event_id == CORE_MQTT_CONNECTED_EVENT && !mqtt_provisioning_active()) {
-    // Refresh metrics on new connection
-    app_metrics_send(payload, PAYLOAD_MAX_SIZE);
-  }
+telemetry_cfg_t telemetry_get_cfg() {
+  return s_cfg;
 }
+
+esp_err_t telemetry_set_cfg(telemetry_cfg_t cfg) {
+  if (cfg.metrics_interval_s < 1 or cfg.metrics_interval_s > 3600*24) {
+    ESP_LOGE(TAG, "Invalid metrics interval: %lu but must be [%d, %d]", cfg.metrics_interval_s, 1, 3600*24);
+    goto error;
+  }
+
+  if (cfg.status_interval_s < 1 or cfg.status_interval_s > 3600*24) {
+    ESP_LOGE(TAG, "Invalid status interval: %lu but must be [%d, %d]", cfg.status_interval_s, 1, 3600*24);
+    goto error;
+  }
+
+  s_cfg = cfg;
+  utils_save_to_nvs("telemetry", "cfg", &s_cfg, sizeof(telemetry_cfg_t));
+  ESP_LOGI(TAG, "Set telemetry config: status_interval_s=%lu, metrics_interval_s=%lu",
+           s_cfg.status_interval_s, s_cfg.metrics_interval_s);
+  return ESP_OK;
+
+  error:
+  ESP_LOGE(TAG, "Failed to set telemetry config");
+  return ESP_FAIL;
+}
+
+
 
 void telemetry_init(EventGroupHandle_t net_group) {
   if (_go) {
     return;
   }
 
+  utils_load_from_nvs("telemetry", "cfg", &s_cfg, sizeof(telemetry_cfg_t));
   xNetworkEventGroup = net_group;
   device_info_init();
   app_metrics_init();
 
   // Regular telemetry
   sprintf(info_topic, "%s/%s/telemetry/status", CMAKE_THING_TYPE, identity_thing_id());
-
-  esp_event_handler_register(CORE_MQTT_EVENT, ESP_EVENT_ANY_ID, &_event_handler, nullptr);
 
   _go = true;
   xTaskCreate(_send_telemetry, "send_telemetry", 3072, nullptr, 4, nullptr);
