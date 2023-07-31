@@ -21,16 +21,16 @@ it's unclear if 1-wire parasitic mode will work (untested), if not small modific
       max31850_data_t elm_temp = max31850_read(GPIO_NUM_2, max31850_addr);
       if (elm_temp.is_valid) {
         // CRC is ok 
-        if (elm_temp.thermocouple_status == MAX31850_TC_STATUS_OK) {
+        if (elm_temp.tc_status == MAX31850_TC_STATUS_OK) {
           // All is well
-          ESP_LOGI(TAG, "Thermocouple=%.2fC, Junction=%.2fC", elm_temp.thermocouple_temp, elm_temp.junction_temp);
+          ESP_LOGI(TAG, "Thermocouple=%.2fC, Junction=%.2fC", elm_temp.tc_temp, elm_temp.junction_temp);
         } else {
           // Error reported
-          if (elm_temp.thermocouple_status & MAX31850_TC_STATUS_OPEN_CIRCUIT) {
+          if (elm_temp.tc_status & MAX31850_TC_STATUS_OPEN_CIRCUIT) {
             ESP_LOGE(TAG, "thermocouple fault OPEN CIRCUIT");
-          } else if (elm_temp.thermocouple_status & MAX31850_TC_STATUS_SHORT_GND) {
+          } else if (elm_temp.tc_status & MAX31850_TC_STATUS_SHORT_GND) {
             ESP_LOGE(TAG, "thermocouple fault SHORT TO GROUND");
-          } else if (elm_temp.thermocouple_status & MAX31850_TC_STATUS_SHORT_VCC) {
+          } else if (elm_temp.tc_status & MAX31850_TC_STATUS_SHORT_VCC) {
             ESP_LOGE(TAG, "thermocouple fault SHORT TO VCC");
           }
         }  

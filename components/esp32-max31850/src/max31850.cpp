@@ -81,7 +81,7 @@ max31850_data_t max31850_read(gpio_num_t one_wire_pin, uint64_t device_address) 
       // Onboard temp, lower 4 bits are status bits
       results.thermocouple_status = data[2] & 0x07;
     } else {
-      results.thermocouple_temp = _convertTC(data);
+      results.tc_temp = _convertTC(data);
       results.thermocouple_status = MAX31850_TC_STATUS_OK;
     }
   } else {

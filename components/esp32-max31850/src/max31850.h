@@ -34,7 +34,7 @@ struct max31850_data_t {
   /**
    * Temperature read from the connected thermocouple.
    */
-  float thermocouple_temp;
+  float tc_temp;
 
   /**
    * Temperature read from the onboard sensor, representing the junction temperature.
