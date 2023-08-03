@@ -15,7 +15,7 @@ This repository solely exists to share this experiment and results, along with s
 My specific roaster is a Hottop KN-8828B-2K+, although that's not super relevant. You might recognise the popular 
 "reverse flow" mod, but perhaps with a twist of its own which I will not get into here.
 
-![Roaster]("media/Roaster.png")
+![Roaster]("media/Roaster.jpg")
 
 You might also spot the suspicious ribbon cable coming out of the back of the roaster. Yes, that is an
 ESP-PROG programmer cable that connects to a custom PCB that I designed and made to control a second heater element, I 
@@ -29,12 +29,13 @@ are rather straightforward:
 * Use a potentiometer so the fraction of heat to the second element can be asjusted by the user as needed
 * Drive this second heater element by using a solid state relay (SSR)
 * Apply main heater duty cycle scaled by the potentiometer fraction ot the second heater element
+* Hard cap max ratio to 70%, let's be reasonable :grinning:
 * Add a thermocouple for safety into the main chamber to make sure we limit the risk of fire
 * Additionally, this is all connected to AWS IoT Core so, it can tell you if you are about to burn your house down
 
 The PCB is tiny and looks like this:
 
-![PCB]("media/PCB.png")
+![PCB]("media/PCB.jpg")
 
 When installed, it tucks in nicely to one of the sides of the roaster walls, whilst the SSRs are mounted on the opposite 
 side. If you are wondering, rather than using the power path to the main heater element from the factory board,
@@ -44,7 +45,7 @@ selected offer the correct range of galvanic isolation, power range and, safety 
 Here are some additional photos of the modifications where you can spot the second heater element and the K-Type 
 thermocouple:
 
-![gallery1]("media/gallery1.png")
+![gallery1]("media/gallery1.jpg")
 ![gallery2]("media/gallery2.png")
 ![gallery3]("media/gallery3.png")
 ![gallery4]("media/gallery4.png")
