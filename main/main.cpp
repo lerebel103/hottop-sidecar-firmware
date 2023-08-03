@@ -8,7 +8,7 @@
 #include "esp_pm.h"
 #include "shadow/shadow_handler.h"
 #include "ota.h"
-#include "esp32_networking.h"
+#include "aws_connector.h"
 #include "events.h"
 
 #define TAG  "main"
@@ -18,7 +18,7 @@ static EventGroupHandle_t xNetworkEventGroup;
 
 static square_wave_handle_t wave_handle;
 /**
- * Hototop needs a 100Hz square signal, with 480us low side.
+ * Hottop needs a 100Hz square signal, with 480us low side.
  * We have the option of generating this signal here for testing purposes with a real panel
  */
 static void _generate_zero_signal() {
@@ -42,14 +42,10 @@ extern "C" void app_main() {
   gpio_install_isr_service(0);
   xNetworkEventGroup = xEventGroupCreate();
 
-  esp32_networking_init(xNetworkEventGroup);
+  aws_connector_init(xNetworkEventGroup);
   control_loop_init(xNetworkEventGroup);
+
+  // We are good to go, run.
   control_loop_run();
-
-  do {
-    ESP_LOGI(TAG, "Memory heap: %lu, min: %lu", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
-    vTaskDelay(pdMS_TO_TICKS(1000));
-  } while(1);
-
 }
 

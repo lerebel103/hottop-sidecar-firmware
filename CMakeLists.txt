@@ -148,4 +148,4 @@ add_custom_command(OUTPUT
 # Create target which consume the command via DEPENDS.
 add_custom_target(firmware ALL DEPENDS ${CMAKE_BINARY_DIR}/${FINAL_FILE})
 
-target_add_binary_data(${PROJECT_NAME}.elf "components/esp32-networking/certs/aws_codesign.crt" TEXT)
+target_add_binary_data(${PROJECT_NAME}.elf "certs/aws_codesign.crt" TEXT)
