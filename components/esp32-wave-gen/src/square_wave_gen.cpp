@@ -128,7 +128,7 @@ esp_err_t square_wave_gen_new(square_wave_cfg_t cfg, square_wave_handle_t *ret_h
   // Set flag to run thread to create other edge
   handle->go = true;
   handle->semaphoreHandle = xSemaphoreCreateBinary();
-  xTaskCreate(_generate_edge, "generateEdge", 1024, handle, 5, nullptr);
+  xTaskCreate(_generate_edge, "generateEdge", 1024, handle, 6, nullptr);
 
   // Good to go
   ESP_LOGI(TAG, "Wave generator created on gpio %d", handle->cfg.gpio);
