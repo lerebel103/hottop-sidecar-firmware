@@ -10,16 +10,16 @@ IF (NOT CMAKE_BUILD_TYPE)
 ENDIF ()
 MESSAGE(STATUS "${CMAKE_BUILD_TYPE} build selected")
 
-
-# If the environment does not specify a hardware revision to build for...
-IF (NOT HARDWARE_REVISION)
-    set(HARDWARE_REVISION "1.0"
-            CACHE INTERNAL "Set hardware revision to build for."
+# Target hardware revision for which this hardware is for
+IF (NOT HARDWARE_REVISION_MAJOR)
+    set(HARDWARE_REVISION_MAJOR 1
+            CACHE INTERNAL "Set major hardware revision to build for."
             FORCE)
 ENDIF ()
+
 # If the environment does not specify a hardware revision to build for...
 IF (NOT THING_TYPE)
-    set(THING_TYPE "rebel-hottop-sidecar"
+    set(THING_TYPE "HottopSidecar"
             CACHE INTERNAL "Set hardware thing type to build for."
             FORCE)
 ENDIF ()
@@ -84,8 +84,13 @@ execute_process(
 )
 STRING(STRIP ${PROJECT_VERSION_PATCH} PROJECT_VERSION_PATCH)
 
-# Not ussing this
-set(PROJECT_VERSION_TWEAK "0" CACHE INTERNAL "" FORCE)
+# Versioning derived from last tag
+add_definitions(-DCMAKE_THING_TYPE="${THING_TYPE}")
+add_definitions(-DCMAKE_FIRMWARE_VERSION_MAJOR=${PROJECT_VERSION_MAJOR})
+add_definitions(-DCMAKE_FIRMWARE_VERSION_MINOR=${PROJECT_VERSION_MINOR})
+add_definitions(-DCMAKE_FIRMWARE_VERSION_BUILD=${PROJECT_VERSION_PATCH})
+add_definitions(-DCMAKE_HARDWARE_REVISION_MAJOR=${HARDWARE_REVISION_MAJOR})
+add_definitions(-DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}")
 
 SET(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH} CACHE INTERNAL "" FORCE)
 SET(FIRMWARE_VERSION ${PROJECT_VERSION} CACHE INTERNAL "" FORCE)
@@ -95,12 +100,13 @@ SET(BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE INTERNAL "" FORCE)
 
 
 IF (NOT NVRAM_STORAGE_PARTITION)
-    SET(NVRAM_STORAGE_PARTITION "storage" CACHE INTERNAL "NVS partition name"  FORCE)
-ENDIF()
+    SET(NVRAM_STORAGE_PARTITION "storage" CACHE INTERNAL "NVS partition name" FORCE)
+ENDIF ()
 
-set(IDF_TARGET esp32s2)
+set(EXTRA_COMPONENT_DIRS components/esp-aws-iot/libraries components/esp-aws-iot/libraries/common/)
+
+set(IDF_TARGET esp32s3)
 set(PROJECT_NAME hottop-sidecar-firmware)
-set(EXTRA_COMPONENT_DIRS esp-idf-lib/components)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(${PROJECT_NAME} VERSION ${PROJECT_VERSION})
 
@@ -115,10 +121,10 @@ SET(CMAKE_C_STANDARD -std=c11)
 # Set compile flags to give us something that will provide good perfomance
 STRING(TOLOWER ${CMAKE_BUILD_TYPE} LOWERCASE_CMAKE_BUILD_TYPE)
 IF (LOWERCASE_CMAKE_BUILD_TYPE MATCHES debug)
-    SET(CMAKE_C_FLAGS   "-O0 -ffast-math ${CMAKE_C_FLAGS}")
-    SET(CMAKE_CXX_FLAGS "-O0 -ffast-math ${CMAKE_CXX_FLAGS}")
+    SET(CMAKE_C_FLAGS "-O0 -Os -ffast-math ${CMAKE_C_FLAGS}")
+    SET(CMAKE_CXX_FLAGS "-O0 -Os -ffast-math ${CMAKE_CXX_FLAGS}")
 ELSEIF (LOWERCASE_CMAKE_BUILD_TYPE MATCHES release)
-    SET(CMAKE_C_FLAGS   "-O3 -ffast-math ${CMAKE_C_FLAGS}")
+    SET(CMAKE_C_FLAGS "-O3 -ffast-math ${CMAKE_C_FLAGS}")
     SET(CMAKE_CXX_FLAGS "-O3 -ffast-math ${CMAKE_CXX_FLAGS}")
 ELSE ()
     MESSAGE(FATAL_ERROR "Build type '${CMAKE_BUILD_TYPE}' is unknown")
@@ -133,12 +139,13 @@ add_custom_command(OUTPUT
         ${CMAKE_BINARY_DIR}/${FINAL_FILE}
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/${PROJECT_NAME}.bin" "${CMAKE_BINARY_DIR}/${FINAL_FILE}"
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/*firmware.bin" "${FIRMWARE_TARGET_DIR}"
-        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/ota*.bin" "${FIRMWARE_TARGET_DIR}"
+        #COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/ota*.bin" "${FIRMWARE_TARGET_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/partition_table/*.bin" "${FIRMWARE_TARGET_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/bootloader/*.bin" "${FIRMWARE_TARGET_DIR}"
-        DEPENDS app bootloader 
+        DEPENDS app bootloader
         )
 
 # Create target which consume the command via DEPENDS.
 add_custom_target(firmware ALL DEPENDS ${CMAKE_BINARY_DIR}/${FINAL_FILE})
 
+target_add_binary_data(${PROJECT_NAME}.elf "certs/aws_codesign.crt" TEXT)

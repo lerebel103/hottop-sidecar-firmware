@@ -1,3 +1,18 @@
-[submodule "esp-idf-lib"]
-	path = esp-idf-lib
-	url = https://github.com/UncleRus/esp-idf-lib
+[submodule "components/esp32-wave-gen"]
+	path = components/esp32-wave-gen
+	url = https://github.com/lerebel103/esp32-wave-gen.git
+[submodule "components/esp32-input-pwm-duty"]
+	path = components/esp32-input-pwm-duty
+	url = https://github.com/lerebel103/esp32-input-pwm-duty.git
+[submodule "components/esp32-onewire"]
+	path = components/esp32-onewire
+	url = https://github.com/lerebel103/esp32-onewire.git
+[submodule "components/esp32-max31850"]
+	path = components/esp32-max31850
+	url = https://github.com/lerebel103/esp32-max31850.git
+[submodule "components/esp-aws-iot"]
+	path = components/esp-aws-iot
+	url = https://github.com/lerebel103/esp-aws-iot.git
+[submodule "components/esp32-aws-connector"]
+	path = components/esp32-aws-connector
+	url = https://github.com/lerebel103/esp32-aws-connector.git

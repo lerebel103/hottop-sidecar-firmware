@@ -1,9 +1,21 @@
 dependencies:
+  espressif/cbor:
+    component_hash: 440f4ee4504841cc9b4f3a8ef755776a612ac9dace355514c68b999868f990ff
+    source:
+      service_url: https://api.components.espressif.com/
+      type: service
+    version: 0.6.0~1
+  espressif/qrcode:
+    component_hash: e07c05f9129250d79c62957c02e2f67d3485e917e6953cbc6637324b3a47ea7f
+    source:
+      service_url: https://api.components.espressif.com/
+      type: service
+    version: 0.1.0
   idf:
     component_hash: null
     source:
       type: idf
-    version: 4.4.4
-manifest_hash: dcf4d39b94252de130019eadceb989d72b0dbc26b552cfdcbb50f6da531d2b92
-target: esp32s2
+    version: 5.0.2
+manifest_hash: 7a36f7c206fd9faeeb4a1affae3d92b8f7cf7b3b8826b404b71de0d38fd76667
+target: esp32s3
 version: 1.0.0
