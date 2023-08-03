@@ -1,6 +1,6 @@
 # Firmware that doubles the Power of a Hottop Coffee Roaster :grin:
 
-Tired of roasting tiny 200 grams coffee batches that will still run beyond 12 minutes? Well, this firmware is for you: it 
+Tired of roasting tiny 200g coffee batches that extend past 12 minutes? Look no further this firmware is for you, it 
 will double the power of your Hottop Coffee Roaster and roast 320g in well under 10 minutes. Plus it connects your
 roaster to AWS IoT Core, so you can have something cool to talk about with your friends, win-win!
 
@@ -27,8 +27,8 @@ occasionally access serial console for convenience, I will get around to removin
 So you've guessed it, there is a second heater element and a sidecar PCB that controls it. The working principles
 are rather straightforward:
 * Connect the main control signal harness through a custom PCB
-* Intercept the signals, particularly the main heater element duty cycle (it's all simple 5V logic)
-* Use a microcontroller (esp32-s3) to then control a second heater element 
+* Intercept the signals, reverse engineer them, particularly the main heater element duty cycle (it's all simple 5V logic)
+* Use a microcontroller (esp32-s3-mini) to then control a second heater element 
 * Use a potentiometer so the fraction of heat to the second element can be asjusted by the user (well, me) as needed
 * Drive this second heater element by using a solid state relay (SSR)
 * Apply main heater duty cycle scaled by the potentiometer fraction ot the second heater element
@@ -48,10 +48,10 @@ selected offer the correct range of galvanic isolation, power range and, safety 
 Here are some additional photos of the modifications where you can spot the second heater element and the K-Type 
 thermocouple for safety cut-off:
 
-<img src="media/gallery2.jpg" width="400">
-<img src="media/gallery1.jpg" width="400">
-<img src="media/gallery3.jpg" width="400">
-<img src="media/gallery4.jpg" width="400">
+| | |
+|:-------------------------:|:-------------------------:|
+| <img src="media/gallery2.jpg" width="400"> | <img src="media/gallery1.jpg" width="400"> | 
+| <img src="media/gallery3.jpg" width="400"> | <img src="media/gallery4.jpg" width="400"> |
 
 # Firmware
 
@@ -72,16 +72,16 @@ You might ask but why? Well, Google Cloud IoT Core shut down their offering and 
 to AWS IoT Core, so I took the opportunity to write a portable [esp32-aws-connector](https://github.com/lerebel103/esp32-aws-connector) component that I could re-use for all my devices, 
 so this one gets it too.
 
-A simple controller reads the main heater duty cycle and applies it to the second heater by 
-reading in various state and desired output ratio. The board uses a max31855 thermocouple amplifier, you'll find the
+A simple controller task reads the main heater duty cycle and applies it to the second heater by 
+reading in various states and applying the desired output heat ratio. The board uses a max31855 thermocouple amplifier, you'll find the
 driver as a component here: [esp32-max31855](https://github.com/lerebel103/esp32-max31850).
 
-The main control loop is hardware timer based and carefully makes use of the built-in hardware watchdog of the ESP32-S3
-chip to ensure we do not get a runaway situations and maintain an expected loop trigger time.
+The main control loop is hardware timer-based and carefully makes use of the built-in hardware watchdog of the ESP32-S3
+chip to ensure we do not get into a heat runaway situation and maintain an expected loop trigger time.
 
 Controlling SSRS on 50Hz or 60Hz mains is a little tricky, you may know that one cannot use PWM to control 
 [zero-crossing type SSRs](https://en.wikipedia.org/wiki/Zero-crossing_control). I use a trick here to generate a
-duty cycle by using a timer to generate specific pulses of a period divisible by that of the mains frequency
+duty cycle with a timer to generate specific pulses of a period divisible by that of the mains frequency
 to obtain the desired duty cycle. Perhaps the code might speak better for itself, see under `components/esp-ssr-controller`.
 
 # End Results
