@@ -1,4 +1,4 @@
-# Firmware that doubles the Power of a Hottop Coffee Roaster :grin:
+# Hottop sidecar coffee roaster firmware :grin: :fire:
 
 Tired of roasting tiny 200g coffee batches that extend past 12 minutes? Look no further this firmware is for you, it 
 will double the power of your Hottop Coffee Roaster and roast 320g in well under 10 minutes. Plus it connects your
