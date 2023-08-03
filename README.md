@@ -1,6 +1,6 @@
 # Firmware that doubles the Power of a Hottop Coffee Roaster :grin:
 
-Tired of roasting tiny 200 grams batches that will still run beyond 12 minutes? Well, this firmware is for you: it 
+Tired of roasting tiny 200 grams coffee batches that will still run beyond 12 minutes? Well, this firmware is for you: it 
 will double the power of your Hottop Coffee Roaster and roast 320g in well under 10 minutes. Plus it connects your
 roaster to AWS IoT Core, so you can have something cool to talk about with your friends, win-win!
 
@@ -14,8 +14,9 @@ This repository solely exists to share this experiment and results, along with s
 ## Hardware Modifications
 My specific roaster is a Hottop KN-8828B-2K+, although that's not super relevant. You might recognise the popular 
 "reverse flow" mod, but perhaps with a twist of its own which I will not get into here.
-
-![Roaster]("media/Roaster.jpg")
+<p align="center">
+<img src="media/Roaster.jpg" alt="Roaster" width="900">
+</p>
 
 You might also spot the suspicious ribbon cable coming out of the back of the roaster. Yes, that is an
 ESP-PROG programmer cable that connects to a custom PCB that I designed and made to control a second heater element, I 
@@ -35,7 +36,7 @@ are rather straightforward:
 
 The PCB is tiny and looks like this:
 
-![PCB]("media/PCB.jpg")
+<img src="media/PCB.jpg" alt="PCB" width="250">
 
 When installed, it tucks in nicely to one of the sides of the roaster walls, whilst the SSRs are mounted on the opposite 
 side. If you are wondering, rather than using the power path to the main heater element from the factory board,
@@ -43,11 +44,11 @@ I run both heaters from this PCB on their individual SSRs, so I can cut power of
 selected offer the correct range of galvanic isolation, power range and, safety for 240V.
 
 Here are some additional photos of the modifications where you can spot the second heater element and the K-Type 
-thermocouple:
+thermocouple for safety cut-off:
 
-![gallery1]("media/gallery1.jpg")
-![gallery2]("media/gallery2.png")
-![gallery3]("media/gallery3.png")
-![gallery4]("media/gallery4.png")
+<img src="media/gallery2.jpg" width="400">
+<img src="media/gallery1.jpg" width="400">
+<img src="media/gallery3.jpg" width="400">
+<img src="media/gallery4.jpg" width="400">
 
 
