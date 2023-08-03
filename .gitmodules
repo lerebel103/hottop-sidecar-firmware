@@ -13,3 +13,6 @@
 [submodule "components/esp-aws-iot"]
 	path = components/esp-aws-iot
 	url = https://github.com/lerebel103/esp-aws-iot.git
+[submodule "components/esp32-aws-connector"]
+	path = components/esp32-aws-connector
+	url = https://github.com/lerebel103/esp32-aws-connector.git
