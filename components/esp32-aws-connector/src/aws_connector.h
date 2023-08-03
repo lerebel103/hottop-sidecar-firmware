@@ -4,4 +4,4 @@
 #include <freertos/event_groups.h>
 
 
-void esp32_networking_init(EventGroupHandle_t net_group);
+void aws_connector_init(EventGroupHandle_t net_group);

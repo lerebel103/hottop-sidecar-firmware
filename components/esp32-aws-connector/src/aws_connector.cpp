@@ -1,4 +1,4 @@
-#include "esp32_networking.h"
+#include "aws_connector.h"
 
 #include <esp_app_desc.h>
 #include "wifi/wifi_connect.h"
@@ -14,7 +14,7 @@ static EventGroupHandle_t xNetworkEventGroup;
 
 
 
-void esp32_networking_init(EventGroupHandle_t net_group) {
+void aws_connector_init(EventGroupHandle_t net_group) {
   xNetworkEventGroup = net_group;
 
   ESP_ERROR_CHECK( nvs_init() );
