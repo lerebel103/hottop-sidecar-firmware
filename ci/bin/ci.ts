@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
-import { CiStack } from '../lib/ci-stack';
+import { CIStack } from '../lib/CIStack';
 
 const app = new cdk.App();
 
@@ -21,6 +21,6 @@ if (default_region === undefined || default_region === '') {
     throw new Error('AWS_DEFAULT_REGION is not defined');
 }
 
-new CiStack(app, 'hottopsidecar-pipeline', {
+new CIStack(app, 'hottopsidecar-pipeline', {
   env: { account: account, region: region },
 });

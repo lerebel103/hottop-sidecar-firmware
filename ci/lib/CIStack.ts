@@ -1,12 +1,13 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import {CodeBuildStep, CodePipeline, CodePipelineSource} from "aws-cdk-lib/pipelines";
+import {BuildFirmwareStage} from "./BuildFWStage";
 
 /**
  * A stack for the CI/CD pipeline
  *
  */
-export class CiStack extends cdk.Stack {
+export class CIStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
@@ -22,8 +23,12 @@ export class CiStack extends cdk.Stack {
             }
         ),
         installCommands: ['npm install -g aws-cdk'],
-        commands: ['cd ci/', 'npm ci', 'npm run build', 'npx cdk synth']
+          commands: ['cd ci/', 'mkdir cdk.out', 'npm ci', 'npm run build', 'npx cdk synth']
       })
     });
+
+    // ====== Add stages to the pipeline ======
+    const buildFirmwareStage = new BuildFirmwareStage(this, "build-firmware-stage");
+    pipeline.addStage(buildFirmwareStage);
   }
 }
