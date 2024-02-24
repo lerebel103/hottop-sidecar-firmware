@@ -29,7 +29,7 @@ export class CIStack extends cdk.Stack {
     });
 
     // ====== Add stages to the pipeline ======
-    const buildFirmwareStage = new BuildFirmwareStage(this, "build-firmware-stage");
+    const buildFirmwareStage = new BuildFirmwareStage(this, "hottopsidecar-fw-stage");
     pipeline.addStage(buildFirmwareStage);
   }
 }
