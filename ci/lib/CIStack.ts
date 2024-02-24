@@ -23,7 +23,8 @@ export class CIStack extends cdk.Stack {
             }
         ),
         installCommands: ['npm install -g aws-cdk'],
-          commands: ['cd ci/', 'mkdir cdk.out', 'npm ci', 'npm run build', 'npx cdk synth']
+        commands: ['cd ci/', 'npm ci', 'npm run build', 'npx cdk synth'],
+        primaryOutputDirectory: 'ci/cdk.out'
       })
     });
 
