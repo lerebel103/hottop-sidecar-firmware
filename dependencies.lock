@@ -6,16 +6,16 @@ dependencies:
       type: service
     version: 0.6.0~1
   espressif/qrcode:
-    component_hash: e07c05f9129250d79c62957c02e2f67d3485e917e6953cbc6637324b3a47ea7f
+    component_hash: 3b493771bc5d6ad30cbf87c25bf784aada8a08c941504355b55d6b75518ed7bc
     source:
       service_url: https://api.components.espressif.com/
       type: service
-    version: 0.1.0
+    version: 0.1.0~2
   idf:
     component_hash: null
     source:
       type: idf
-    version: 5.0.2
-manifest_hash: 7a36f7c206fd9faeeb4a1affae3d92b8f7cf7b3b8826b404b71de0d38fd76667
+    version: 5.1.1
+manifest_hash: f9de56b6ad1a36f484a54414681369842471b7bf447daaa3e525e9261f4dc899
 target: esp32s3
 version: 1.0.0

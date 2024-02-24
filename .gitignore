@@ -1,4 +1,7 @@
-/.idea
+.idea
 cmake-build-*
 /managed_components
 /.DS_Store
+/certs
+node_modules
+cdk.out

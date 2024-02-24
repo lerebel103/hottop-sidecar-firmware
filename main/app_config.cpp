@@ -162,9 +162,7 @@ void _updated_handler(MQTTContext_t *ctx, MQTTPublishInfo_t *pxPublishInfo) {
       }
     }
 
-    if (root) {
-      cJSON_Delete(root);
-    }
+    cJSON_Delete(root);
 
     // Set flag now
     _update_required = true;
