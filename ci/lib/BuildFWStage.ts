@@ -7,6 +7,6 @@ export class BuildFirmwareStage extends Stage {
         super(scope, id, props);
 
         //***********Instantiate the resource stack***********
-        new BuildFWResourcesStack(this, 'build-fw-stack');
+        new BuildFWResourcesStack(this, 'hottopsidecar-build-fw-stack');
     }
 }
