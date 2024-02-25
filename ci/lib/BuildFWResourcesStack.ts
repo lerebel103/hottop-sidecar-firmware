@@ -19,6 +19,7 @@ export class BuildFWResourcesStack extends cdk.Stack {
                 cache: Cache.local(LocalCacheMode.DOCKER_LAYER, LocalCacheMode.CUSTOM),
                 input: sourceFiles,
                 commands: ['ls -tral'],
+                primaryOutputDirectory: 'ci/cdk.out',
                 buildEnvironment: {
                     buildImage: LinuxBuildImage.fromDockerRegistry('espressif/idf:v5.2'),
                     computeType: ComputeType.SMALL,
