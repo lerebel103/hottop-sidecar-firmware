@@ -1,7 +1,11 @@
 import * as cdk from 'aws-cdk-lib';
 import {Construct} from 'constructs';
 import {CodeBuildStep, CodePipeline, CodePipelineSource} from "aws-cdk-lib/pipelines";
+import {Cache, BuildSpec} from "aws-cdk-lib/aws-codebuild";
+import {BlockPublicAccess, Bucket, BucketEncryption} from "aws-cdk-lib/aws-s3";
 import {BuildFirmwareStage} from "./BuildFWStage";
+
+let myCachingBucket : Bucket | undefined = undefined;
 
 /**
  * A stack for the CI/CD pipeline
@@ -10,6 +14,14 @@ import {BuildFirmwareStage} from "./BuildFWStage";
 export class CIStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props: cdk.StackProps) {
         super(scope, id, props);
+
+         myCachingBucket = new Bucket(this, "hottop-pipeline-cache-bucket", {
+            blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+            encryption: BucketEncryption.S3_MANAGED,
+            enforceSSL: true,
+            versioned: true,
+            removalPolicy: cdk.RemovalPolicy.RETAIN,
+        });
 
         // GitHub source connection
         const sourceArtifact = CodePipelineSource.connection(
@@ -21,14 +33,25 @@ export class CIStack extends cdk.Stack {
             }
         );
 
-
         const pipeline = new CodePipeline(this, 'hottopsidecar-build-pipeline', {
             pipelineName: 'hottopsidecar-build-pipeline',
             synth: new CodeBuildStep('SynthStep', {
                 input: sourceArtifact,
                 installCommands: ['npm install -g aws-cdk'],
                 commands: ['cd ci/', 'npm ci', 'npm run build', 'npx cdk synth'],
-                primaryOutputDirectory: 'ci/cdk.out'
+                primaryOutputDirectory: 'ci/cdk.out',
+                cache: Cache.bucket(myCachingBucket),
+                partialBuildSpec: BuildSpec.fromObject(
+                    {
+                        "cache": {
+                            "paths": [
+                                "ci/cdk.out/**/*",
+                                "/root/.m2/**/*",
+                                "/root/.npm/**/*",
+                            ]
+                        },
+                    }
+                ),
             })
         });
 
