@@ -19,14 +19,12 @@ jobs:
       AWS_REGION: ap-southeast-2
       AWS_ACCOUNT_ID: ${{ inputs.aws_account_id }}
       STAGE: ${{ inputs.stage }}
-    #permissions:
-    #  id-token: write
-    #  contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v3
         with:
           submodules: 'recursive'
+          fetchdepth: 0
       - name: esp-idf build
         uses: espressif/esp-idf-ci-action@v1
         with:
