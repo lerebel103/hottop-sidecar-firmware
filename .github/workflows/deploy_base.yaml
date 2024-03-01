@@ -25,6 +25,7 @@ jobs:
         with:
           submodules: 'recursive'
           fetch-depth: 0
+          fetch-tags: true
       - name: esp-idf build
         uses: espressif/esp-idf-ci-action@v1
         with:
