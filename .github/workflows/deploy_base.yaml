@@ -1,0 +1,35 @@
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      aws_account_id:
+        required: true
+        type: string
+      stage:
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      AWS_REGION: ap-southeast-2
+      AWS_ACCOUNT_ID: ${{ inputs.aws_account_id }}
+      STAGE: ${{ inputs.stage }}
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+      - name: esp-idf build
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.1.1
+          target: esp32s2
+          path: '.'
