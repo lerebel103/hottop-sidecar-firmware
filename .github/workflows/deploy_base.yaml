@@ -20,8 +20,8 @@ jobs:
       AWS_ACCOUNT_ID: ${{ inputs.aws_account_id }}
       STAGE: ${{ inputs.stage }}
     permissions:
-      id-token: write
-      contents: write
+      id-token: read
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v3
