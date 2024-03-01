@@ -1,6 +1,6 @@
 import * as cdk from "aws-cdk-lib";
 import {Construct} from 'constructs';
-import {CodeBuildStep, CodePipeline} from "aws-cdk-lib/pipelines";
+import {CodeBuildStep, CodePipeline, CodePipelineSource} from "aws-cdk-lib/pipelines";
 import {FileSet} from "aws-cdk-lib/pipelines/lib/blueprint/file-set";
 import {ComputeType, LinuxBuildImage, LocalCacheMode, Project, Source} from "aws-cdk-lib/aws-codebuild";
 import {Cache, BuildSpec} from "aws-cdk-lib/aws-codebuild";
@@ -13,7 +13,7 @@ const espIdfVersion = 'v5.2';
 const outDir = 'ci/cdk.out';
 
 export class BuildFWResourcesStack extends cdk.Stack {
-    constructor(scope: Construct, id: string, props: cdk.StackProps, sourceFiles: FileSet | undefined) {
+    constructor(scope: Construct, id: string, props: cdk.StackProps, sourceFiles: CodePipelineSource) {
         super(scope, id, props);
 
 
@@ -31,15 +31,16 @@ export class BuildFWResourcesStack extends cdk.Stack {
 
 
         // Creates new pipeline artifacts
-      /*  const sourceArtifact = new Artifact("SourceArtifact");
+        const sourceArtifact = new Artifact("SourceArtifact");
         const buildArtifact = new Artifact("BuildArtifact");
 
-        Repository.fromRepositoryName()
+        // Repository.fromRepositoryName()
+
 
         // CodeBuild project that builds the firmware
         const buildImage = new Project(this, "BuildFirmware", {
             buildSpec: BuildSpec.fromSourceFilename("app/buildspec.yaml"),
-            source: Source.,
+            source: sourceFiles,
             environment: {
                 privileged: true,
                 environmentVariables: {
@@ -62,12 +63,12 @@ export class BuildFWResourcesStack extends cdk.Stack {
                     outputs: [buildArtifact],
                 }),
             ],
-        };*/
+        };
 
         // Creates an AWS CodePipeline with source, build, and deploy stages
         new Pipeline(this, "hottopsidecar-fw-pipeline", {
             pipelineName: "hottopsidecar-fw-pipeline",
-            stages: [],
+            stages: [buildStage],
         });
 
         /*const pipeline = new CodePipeline(this, 'build-fw', {
