@@ -10,7 +10,6 @@ on:
       stage:
         required: true
         type: string
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
