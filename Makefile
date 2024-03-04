@@ -1,12 +1,7 @@
 
-CODESIGN_CERTIFICATE_URL ?= https://ucueb9nr5d.execute-api.ap-southeast-2.amazonaws.com/dev/esp32-certificate
-CODESIGN_FILE ?= certs/aws_codesign.crt
+configure:
+	cmake -DBUILD_STAGE=${STAGE} -DCMAKE_BUILD_TYPE=Release -S . -B build -G Ninja
 
-get-codesign-cert:
-	@echo "Installing codesign certificate"
-	mkdir certs || true
-	./bin/get-codesign-cert.py ${CODESIGN_CERTIFICATE_URL} ${CODESIGN_FILE}
-	@echo "Certificate installed to certs/aws_codesign.crt"
+build: configure
+	cd build && ninja firmware
 
-all: get-codesign-cert
-	@echo "Building firmware"
