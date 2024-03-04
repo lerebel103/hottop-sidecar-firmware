@@ -116,7 +116,8 @@ project(${PROJECT_NAME} VERSION ${PROJECT_VERSION})
 
 
 # Rename target binary file with correct versioning
-set(FIRMWARE_TARGET_DIR ${CMAKE_BINARY_DIR}/firmware/${THING_TYPE}/r${HARDWARE_REVISION_MAJOR}/v${FIRMWARE_VERSION})
+# ${THING_TYPE}/r${HARDWARE_REVISION_MAJOR}/v${FIRMWARE_VERSION})
+set(FIRMWARE_TARGET_DIR ${CMAKE_BINARY_DIR}/firmware/)
 file(MAKE_DIRECTORY ${FIRMWARE_TARGET_DIR})
 
 SET(CMAKE_CXX_STANDARD -std=c++14)
@@ -139,17 +140,25 @@ MESSAGE(STATUS "Using CXXFLAGS ${CMAKE_CXX_FLAGS}")
 
 # Rename target binary file with Hardware Revision, Firmware version and build type.
 SET(FINAL_FILE "${PROJECT_NAME}-r${HARDWARE_REVISION_MAJOR}-v${FIRMWARE_VERSION}-${GIT_SHORT_HASH}-${CMAKE_BUILD_TYPE}.bin")
-add_custom_command(OUTPUT
-        ${CMAKE_BINARY_DIR}/${FINAL_FILE}
+
+# Package binaries into firmware directory
+add_custom_command(TARGET app POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/${PROJECT_NAME}.bin" "${CMAKE_BINARY_DIR}/${FINAL_FILE}"
+        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/${FINAL_FILE}" "${FIRMWARE_TARGET_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/*firmware.bin" "${FIRMWARE_TARGET_DIR}"
-        #COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/ota*.bin" "${FIRMWARE_TARGET_DIR}"
-        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/partition_table/*.bin" "${FIRMWARE_TARGET_DIR}"
-        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/bootloader/*.bin" "${FIRMWARE_TARGET_DIR}"
-        DEPENDS app bootloader
+        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/*firmware.elf" "${FIRMWARE_TARGET_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/*firmware.map" "${FIRMWARE_TARGET_DIR}"
         )
 
-# Create target which consume the command via DEPENDS.
-add_custom_target(firmware ALL DEPENDS ${CMAKE_BINARY_DIR}/${FINAL_FILE})
+add_custom_command(TARGET bootloader POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/partition_table/*.bin" "${FIRMWARE_TARGET_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/bootloader/*.bin" "${FIRMWARE_TARGET_DIR}"
+)
+
+# And finally the target that zips up the firmware as a single artefact
+add_custom_target(firmware
+        COMMAND ${CMAKE_COMMAND} -E tar cvzf firmware.tar.gz ${FIRMWARE_TARGET_DIR}
+        DEPENDS app bootloader
+)
 
 target_add_binary_data(${PROJECT_NAME}.elf "certs/aws_codesign.crt" TEXT)
