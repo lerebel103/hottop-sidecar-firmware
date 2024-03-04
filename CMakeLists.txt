@@ -2,6 +2,7 @@
 # CMakeLists in this exact order for cmake to work correctly
 cmake_minimum_required(VERSION 3.5)
 
+
 # If the environment does not specify a build type, set to Debug
 IF (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug"
@@ -23,25 +24,20 @@ IF (NOT THING_TYPE)
             CACHE INTERNAL "Set hardware thing type to build for."
             FORCE)
 ENDIF ()
-MESSAGE(STATUS "Building for Thing Type ${THING_TYPE} r${HARDWARE_REVISION}.")
+MESSAGE(STATUS "Building for Thing Type ${THING_TYPE} r${HARDWARE_REVISION_MAJOR}.")
+
+# If the environment does not specify a hardware revision to build for...
+IF (NOT BUILD_STAGE)
+    set(BUILD_STAGE "dev"
+            CACHE INTERNAL "Set stage to dev|stg|prd."
+            FORCE)
+ENDIF ()
+MESSAGE(STATUS "Build stage is ${BUILD_STAGE}")
+
+include(config.cmake)
 
 # Git
 find_package(Git REQUIRED)
-if (GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
-    # Update submodules as needed
-    option(GIT_SUBMODULE "Check submodules during build" ON)
-    if (GIT_SUBMODULE)
-        message(STATUS "Submodule update")
-        execute_process(
-                COMMAND ${GIT_EXECUTABLE} submodule sync
-                COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
-                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                RESULT_VARIABLE GIT_SUBMOD_RESULT)
-        if (NOT GIT_SUBMOD_RESULT EQUAL "0")
-            message(FATAL_ERROR "git submodule update --init failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
-        endif ()
-    endif ()
-endif ()
 
 # Now get the current git hash so we can tag build with this
 execute_process(
@@ -105,6 +101,14 @@ ENDIF ()
 
 set(EXTRA_COMPONENT_DIRS components/esp-aws-iot/libraries components/esp-aws-iot/libraries/common/)
 
+# Pull codesign certificate
+execute_process(
+        COMMAND
+        ${CMAKE_SOURCE_DIR}/bin/get-codesign-cert.py ${CODESIGN_URL} ${CMAKE_SOURCE_DIR}/certs/aws_codesign.crt
+        COMMAND_ECHO STDOUT
+        COMMAND_ERROR_IS_FATAL ANY
+)
+
 set(IDF_TARGET esp32s3)
 set(PROJECT_NAME hottop-sidecar-firmware)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
@@ -112,7 +116,7 @@ project(${PROJECT_NAME} VERSION ${PROJECT_VERSION})
 
 
 # Rename target binary file with correct versioning
-set(FIRMWARE_TARGET_DIR ${CMAKE_BINARY_DIR}/firmware/${THING_TYPE}/r${HARDWARE_REVISION}/v${FIRMWARE_VERSION})
+set(FIRMWARE_TARGET_DIR ${CMAKE_BINARY_DIR}/firmware/${THING_TYPE}/r${HARDWARE_REVISION_MAJOR}/v${FIRMWARE_VERSION})
 file(MAKE_DIRECTORY ${FIRMWARE_TARGET_DIR})
 
 SET(CMAKE_CXX_STANDARD -std=c++14)
@@ -134,7 +138,7 @@ MESSAGE(STATUS "Using CFLAGS ${CMAKE_C_FLAGS}")
 MESSAGE(STATUS "Using CXXFLAGS ${CMAKE_CXX_FLAGS}")
 
 # Rename target binary file with Hardware Revision, Firmware version and build type.
-SET(FINAL_FILE "${PROJECT_NAME}-r${HARDWARE_REVISION}-v${FIRMWARE_VERSION}-${GIT_SHORT_HASH}-${CMAKE_BUILD_TYPE}.bin")
+SET(FINAL_FILE "${PROJECT_NAME}-r${HARDWARE_REVISION_MAJOR}-v${FIRMWARE_VERSION}-${GIT_SHORT_HASH}-${CMAKE_BUILD_TYPE}.bin")
 add_custom_command(OUTPUT
         ${CMAKE_BINARY_DIR}/${FINAL_FILE}
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/${PROJECT_NAME}.bin" "${CMAKE_BINARY_DIR}/${FINAL_FILE}"
