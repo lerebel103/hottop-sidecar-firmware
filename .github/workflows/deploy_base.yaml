@@ -12,6 +12,7 @@ on:
         type: string
 jobs:
   build:
+    name: Build new firmware artifact
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
@@ -37,8 +38,14 @@ jobs:
           name: firmware.zip
           path: build/firmware.zip
   deploy:
+    name: Deploy new firmware artifact to S3 for OTA
     runs-on: ubuntu-latest
     needs: build
+    environment: ${{ inputs.environment }}
+    env:
+      AWS_REGION: ap-southeast-2
+      AWS_ACCOUNT_ID: ${{ inputs.aws_account_id }}
+      STAGE: ${{ inputs.stage }}
     steps:
       - uses: actions/download-artifact@master
         with:
