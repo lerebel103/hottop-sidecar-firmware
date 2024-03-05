@@ -34,7 +34,7 @@ export class FirmwareResourcesStack extends cdk.Stack {
         otaBucketUser.addToPolicy(new aws_iam.PolicyStatement({
                 effect: Effect.ALLOW,
                 actions: ['s3:PutObject'],
-                resources: [otaBucket.bucketArn]
+                resources: [`${otaBucket.bucketArn}/newBuilds`, `${otaBucket.bucketArn}/newBuilds/firmware.zip`]
             })
         );
 
