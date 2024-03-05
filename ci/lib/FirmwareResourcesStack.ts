@@ -1,14 +1,16 @@
 import * as cdk from "aws-cdk-lib";
 import {Construct} from 'constructs';
-import {CodeBuildStep, CodePipeline, CodePipelineSource} from "aws-cdk-lib/pipelines";
+import {CodeBuildStep, CodePipeline, CodePipelineSource, ShellStep} from "aws-cdk-lib/pipelines";
 import {FileSet} from "aws-cdk-lib/pipelines/lib/blueprint/file-set";
 import {ComputeType, LinuxBuildImage, LocalCacheMode, Project, Source} from "aws-cdk-lib/aws-codebuild";
 import {Cache, BuildSpec} from "aws-cdk-lib/aws-codebuild";
 import {Artifact, Pipeline} from "aws-cdk-lib/aws-codepipeline";
-import {CodeBuildAction} from "aws-cdk-lib/aws-codepipeline-actions";
+import {CodeBuildAction, S3DeployAction, S3SourceAction, S3Trigger} from "aws-cdk-lib/aws-codepipeline-actions";
 import {Repository} from "aws-cdk-lib/aws-codecommit";
 import {BlockPublicAccess, Bucket, BucketEncryption} from "aws-cdk-lib/aws-s3";
 import {Globals} from "./globals";
+import {ReadWriteType, Trail} from "aws-cdk-lib/aws-cloudtrail";
+import {aws_codepipeline_actions} from "aws-cdk-lib";
 
 export class FirmwareResourcesStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props: cdk.StackProps, sourceFiles: CodePipelineSource) {
@@ -24,17 +26,47 @@ export class FirmwareResourcesStack extends cdk.Stack {
             removalPolicy: cdk.RemovalPolicy.RETAIN,
         });
 
+        // Now monitor for inbound changes on new firmwares landing in the bucket
+        const sourceOutput = new Artifact();
+        const key = 'newBuilds/firmware.zip';
+        const trail = new Trail(this, 'CloudTrail');
+        trail.addS3EventSelector([{
+            bucket: otaBucket,
+            objectPrefix: key,
+        }], {
+            readWriteType: ReadWriteType.WRITE_ONLY,
+        });
+        const sourceAction = new S3SourceAction({
+            actionName: 'S3Source',
+            bucketKey: key,
+            bucket: otaBucket,
+            output: sourceOutput,
+            trigger: S3Trigger.EVENTS,
+        });
 
+        // Create a pipeline
+        const pipeline = new Pipeline(this, "hottopsidecar-fw-pipeline", {
+            pipelineName: "hottopsidecar-fw-pipeline",
+        });
+        pipeline.addStage({
+            stageName: "new-fw-received-trigger",
+            actions: [sourceAction],
+        });
 
-        // Creates new pipeline artifacts
-        /*const sourceArtifact = new Artifact("SourceArtifact");
-        const buildArtifact = new Artifact("BuildArtifact");
+        const deploySignedFiremwareStage = new S3DeployAction({
+            actionName: 'Dummy',
+            bucket: otaBucket,
+            input: sourceOutput,
+        });
+
+        pipeline.addStage({stageName: 'dummy-stage', actions: [deploySignedFiremwareStage]});
+
 
         // Repository.fromRepositoryName()
 
         // CodeBuild project that builds the firmware
-        const buildImage = new Project(this, "Firmware", {
-            source: Source.s3({}),
+        /*const buildImage = new Project(this, "Firmware", {
+            source: sourceAction,
             environment: {
                 privileged: true,
                 environmentVariables: {
