@@ -11,7 +11,7 @@ on:
         required: true
         type: string
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
@@ -32,3 +32,23 @@ jobs:
           target: esp32s3
           path: '.'
           command: make build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware.zip
+          path: build/firmware.zip
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@master
+        with:
+          name: firmware.zip
+          path: firmware.zip
+      - name: Setup AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-southeast-2
+      - name: Sync files to S3 bucket
+        run: |
+          aws s3 cp firmware.zip s3://${{ secrets.AWS_OTA_BUCKET_NAME }}/newBuilds/firmware.zip

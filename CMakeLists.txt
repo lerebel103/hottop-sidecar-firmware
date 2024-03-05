@@ -156,8 +156,9 @@ add_custom_command(TARGET bootloader POST_BUILD
 )
 
 # And finally the target that zips up the firmware as a single artefact
-add_custom_target(firmware
-        COMMAND ${CMAKE_COMMAND} -E tar cvzf firmware.tar.gz ${FIRMWARE_TARGET_DIR}
+add_custom_target(firmware ALL
+        COMMAND zip -j -r firmware.zip ${FIRMWARE_TARGET_DIR}
+        BYPRODUCTS ${CMAKE_BINARY_DIR}/firmware.zip
         DEPENDS app bootloader
 )
 
