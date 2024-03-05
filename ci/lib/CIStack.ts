@@ -3,7 +3,7 @@ import {Construct} from 'constructs';
 import {CodeBuildStep, CodePipeline, CodePipelineSource} from "aws-cdk-lib/pipelines";
 import {Cache, BuildSpec} from "aws-cdk-lib/aws-codebuild";
 import {BlockPublicAccess, Bucket, BucketEncryption} from "aws-cdk-lib/aws-s3";
-import {BuildFirmwareStage} from "./BuildFWStage";
+import {FirmwareStage} from "./FirmwareStage";
 
 let myCachingBucket: Bucket | undefined = undefined;
 let cacheBucketName = "hottop-pipeline-cache-bucket";
@@ -35,10 +35,6 @@ export class CIStack extends cdk.Stack {
             }
         );
 
-        // To send source to s3
-        //                     'tar czf source.tar.gz --exclude "source.tar.gz" --exclude "ci/cdk.out" --exclude "cmake-build-*" --exclude ".git" --exclude="./venv" --exclude="*node_module*" .',
-        //                     `aws s3 cp source.tar.gz s3://${myCachingBucket.bucketName}/`,
-
         const pipeline = new CodePipeline(this, 'hottopsidecar-build-pipeline', {
             pipelineName: 'hottopsidecar-build-pipeline',
             synth: new CodeBuildStep('SynthStep', {
@@ -67,7 +63,7 @@ export class CIStack extends cdk.Stack {
         });
 
         // ====== Add stages to the pipeline ======
-        const buildFirmwareStage = new BuildFirmwareStage(this, "hottopsidecar-fw-stage",
+        const buildFirmwareStage = new FirmwareStage(this, "hottopsidecar-fw-stage",
             props, sourceArtifact);
         pipeline.addStage(buildFirmwareStage);
     }

@@ -7,40 +7,34 @@ import {Cache, BuildSpec} from "aws-cdk-lib/aws-codebuild";
 import {Artifact, Pipeline} from "aws-cdk-lib/aws-codepipeline";
 import {CodeBuildAction} from "aws-cdk-lib/aws-codepipeline-actions";
 import {Repository} from "aws-cdk-lib/aws-codecommit";
+import {BlockPublicAccess, Bucket, BucketEncryption} from "aws-cdk-lib/aws-s3";
+import {Globals} from "./globals";
 
-// ESP-IDF version to use, we will use this to pull down the correct Docker image
-const espIdfVersion = 'v5.2';
-const outDir = 'ci/cdk.out';
-
-export class BuildFWResourcesStack extends cdk.Stack {
+export class FirmwareResourcesStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props: cdk.StackProps, sourceFiles: CodePipelineSource) {
         super(scope, id, props);
 
+        // Define the bucket used to receive
+        const otaBucket = new Bucket(this, `afr-ota-${Globals.THING_MANUFACTURER}-${Globals.THING_TYPE_NAME}-${Globals.STAGE_NAME}`, {
+            bucketName: `afr-ota-${Globals.THING_MANUFACTURER}-${Globals.THING_TYPE_NAME}-${Globals.STAGE_NAME}`,
+            blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+            encryption: BucketEncryption.S3_MANAGED,
+            enforceSSL: true,
+            versioned: true,
+            removalPolicy: cdk.RemovalPolicy.RETAIN,
+        });
 
-        /*const buildStep = new CodeBuildStep('build', {
-            cache: Cache.local(LocalCacheMode.DOCKER_LAYER, LocalCacheMode.CUSTOM),
-            input: sourceFiles?.primaryOutput,
-            commands: ['ls -tral', `mkdir -p ${outDir}`],
-            primaryOutputDirectory: outDir,
-            buildEnvironment: {
-                buildImage: LinuxBuildImage.fromDockerRegistry(`espressif/idf:${espIdfVersion}`),
-                computeType: ComputeType.SMALL,
-                privileged: true
-            }
-        });*/
 
 
         // Creates new pipeline artifacts
-        const sourceArtifact = new Artifact("SourceArtifact");
+        /*const sourceArtifact = new Artifact("SourceArtifact");
         const buildArtifact = new Artifact("BuildArtifact");
 
         // Repository.fromRepositoryName()
 
-
         // CodeBuild project that builds the firmware
-        const buildImage = new Project(this, "BuildFirmware", {
-            buildSpec: BuildSpec.fromSourceFilename("app/buildspec.yaml"),
-            source: sourceFiles,
+        const buildImage = new Project(this, "Firmware", {
+            source: Source.s3({}),
             environment: {
                 privileged: true,
                 environmentVariables: {
@@ -54,10 +48,10 @@ export class BuildFWResourcesStack extends cdk.Stack {
 
         // Creates the build stage for CodePipeline
         const buildStage = {
-            stageName: "Build",
+            stageName: "DeployFirmware",
             actions: [
                 new CodeBuildAction({
-                    actionName: "DockerBuildPush",
+                    actionName: "Sign Firmware",
                     input: new Artifact("SourceArtifact"),
                     project: buildImage,
                     outputs: [buildArtifact],
@@ -69,17 +63,7 @@ export class BuildFWResourcesStack extends cdk.Stack {
         new Pipeline(this, "hottopsidecar-fw-pipeline", {
             pipelineName: "hottopsidecar-fw-pipeline",
             stages: [buildStage],
-        });
-
-        /*const pipeline = new CodePipeline(this, 'build-fw', {
-            // Turn this on because the pipeline uses Docker image assets
-            dockerEnabledForSelfMutation: true,
-            pipelineName: 'hottopsidecar-build-fw',
-            synth: new CodeBuildStep('Synth', {
-                commands: [],
-            })
-        });*/
-
+        }); */
 
     }
 }
