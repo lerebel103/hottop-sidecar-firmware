@@ -9,6 +9,5 @@ jobs:
     uses: ./.github/workflows/deploy_base.yaml
     with:
       environment: dev
-      aws_account_id: 407440998404
       stage: dev
 

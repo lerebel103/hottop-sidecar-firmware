@@ -4,7 +4,7 @@ import {CodeBuildStep, CodePipeline, CodePipelineSource, ShellStep} from "aws-cd
 import {FileSet} from "aws-cdk-lib/pipelines/lib/blueprint/file-set";
 import {ComputeType, LinuxBuildImage, LocalCacheMode, Project, Source} from "aws-cdk-lib/aws-codebuild";
 import {Cache, BuildSpec} from "aws-cdk-lib/aws-codebuild";
-import {Artifact, Pipeline} from "aws-cdk-lib/aws-codepipeline";
+import {Artifact, Pipeline, PipelineType} from "aws-cdk-lib/aws-codepipeline";
 import {CodeBuildAction, S3DeployAction, S3SourceAction, S3Trigger} from "aws-cdk-lib/aws-codepipeline-actions";
 import {Repository} from "aws-cdk-lib/aws-codecommit";
 import {BlockPublicAccess, Bucket, BucketEncryption} from "aws-cdk-lib/aws-s3";
@@ -14,6 +14,9 @@ import {aws_codepipeline_actions, aws_iam, CfnOutput} from "aws-cdk-lib";
 import {CfnAccessKey, Effect} from "aws-cdk-lib/aws-iam";
 
 export class FirmwareResourcesStack extends cdk.Stack {
+
+    otaBucketArn: undefined | string = undefined;
+
     constructor(scope: Construct, id: string, props: cdk.StackProps, sourceFiles: CodePipelineSource) {
         super(scope, id, props);
 
@@ -26,25 +29,13 @@ export class FirmwareResourcesStack extends cdk.Stack {
             versioned: true,
             removalPolicy: cdk.RemovalPolicy.RETAIN,
         });
+        this.otaBucketArn = otaBucket.bucketArn;
 
-        // User that will allow GitHub to push firmware to the ota bucket
-        const otaBucketUser = new aws_iam.User(this, 'hottopsidecar-ota-bucket-user', {
-            userName: 'hottopsidecar-ota-bucket-user',
+        new cdk.CfnOutput(this, 'OTABucketArn', {
+            value: this.otaBucketArn,
+            description: `OTA bucket for new firmware builds`,
+            exportName: 'OTA-Bucket-Arn',
         });
-        otaBucketUser.addToPolicy(new aws_iam.PolicyStatement({
-                effect: Effect.ALLOW,
-                actions: ['s3:PutObject'],
-                resources: [`${otaBucket.bucketArn}/newBuilds`, `${otaBucket.bucketArn}/newBuilds/firmware.zip`]
-            })
-        );
-
-        // Add secret to the user
-        const accessKey = new CfnAccessKey(this, 'CfnAccessKey', {
-            userName: otaBucketUser.userName,
-        });
-        // Output the auth info as part of cloud formation output
-        new CfnOutput(this, 'accessKeyId', {value: accessKey.ref});
-        new CfnOutput(this, 'secretAccessKey', {value: accessKey.attrSecretAccessKey});
 
         // Now monitor for inbound changes on new firmwares landing in the bucket
         const sourceOutput = new Artifact();
@@ -67,6 +58,7 @@ export class FirmwareResourcesStack extends cdk.Stack {
         // Create a pipeline
         const pipeline = new Pipeline(this, "hottopsidecar-fw-pipeline", {
             pipelineName: "hottopsidecar-fw-pipeline",
+            pipelineType: PipelineType.V2,
         });
         pipeline.addStage({
             stageName: "new-fw-received-trigger",
@@ -81,41 +73,6 @@ export class FirmwareResourcesStack extends cdk.Stack {
 
         pipeline.addStage({stageName: 'dummy-stage', actions: [deploySignedFiremwareStage]});
 
-
-        // Repository.fromRepositoryName()
-
-        // CodeBuild project that builds the firmware
-        /*const buildImage = new Project(this, "Firmware", {
-            source: sourceAction,
-            environment: {
-                privileged: true,
-                environmentVariables: {
-                    AWS_ACCOUNT_ID: { value: process.env?.CDK_DEFAULT_ACCOUNT || "" },
-                    REGION: { value: process.env?.CDK_DEFAULT_REGION || "" },
-                    IMAGE_TAG: { value: "latest" },
-                },
-            },
-        });
-
-
-        // Creates the build stage for CodePipeline
-        const buildStage = {
-            stageName: "DeployFirmware",
-            actions: [
-                new CodeBuildAction({
-                    actionName: "Sign Firmware",
-                    input: new Artifact("SourceArtifact"),
-                    project: buildImage,
-                    outputs: [buildArtifact],
-                }),
-            ],
-        };
-
-        // Creates an AWS CodePipeline with source, build, and deploy stages
-        new Pipeline(this, "hottopsidecar-fw-pipeline", {
-            pipelineName: "hottopsidecar-fw-pipeline",
-            stages: [buildStage],
-        }); */
 
     }
 }
