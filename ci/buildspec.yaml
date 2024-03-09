@@ -8,11 +8,8 @@ phases:
   install:
     commands:
       - echo Codesign profile ARN: $CODESIGN_PROFILE_ARN
-  pre_build:
-    commands:
-      - echo OTA bucket parameter URI: $OTA_BUCKET_PARAMETER_URI
   build:
-    commands: |
+    commands:
       - echo Entered the build phase...
       - echo Build started on `date`
     finally:
