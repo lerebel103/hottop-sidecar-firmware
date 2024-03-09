@@ -4,5 +4,5 @@ configure:
 	cmake -DBUILD_STAGE=${STAGE} -DCMAKE_BUILD_TYPE=Release -S . -B build -G Ninja
 
 build: configure
-	cd build && ninja firmware
+	cd build && ninja deploy
 
