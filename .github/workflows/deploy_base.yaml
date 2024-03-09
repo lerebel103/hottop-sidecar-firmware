@@ -58,4 +58,4 @@ jobs:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
       - name: Sync files to S3 bucket
         run: |
-          aws s3 cp firmware.zip ${{ vars.AWS_OTA_BUCKET_URI }}/newBuilds/firmware.zip
+          aws s3 cp firmware.zip/firmware.zip ${{ vars.AWS_OTA_BUCKET_URI }}/newBuilds/firmware.zip
