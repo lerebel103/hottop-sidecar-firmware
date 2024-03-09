@@ -33,7 +33,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: deploy.zip
-          path: build/deploy
+          path: build/deploy.zip
   deploy:
     name: Deploy to S3
     runs-on: ubuntu-latest

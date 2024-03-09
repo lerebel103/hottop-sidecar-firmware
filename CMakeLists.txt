@@ -165,6 +165,7 @@ add_custom_command(TARGET bootloader POST_BUILD
 # And finally the target that zips up the firmware as a single artefact
 add_custom_target(deploy ALL
         DEPENDS app bootloader
+        COMMAND zip -j -r ${CMAKE_BINARY_DIR}/deploy.zip ${DEPLOY_BASE_DIR}
 )
 
 target_add_binary_data(${PROJECT_NAME}.elf "certs/aws_codesign.crt" TEXT)
