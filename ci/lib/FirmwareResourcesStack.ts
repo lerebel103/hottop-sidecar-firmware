@@ -31,10 +31,10 @@ export class FirmwareResourcesStack extends cdk.Stack {
         });
         this.otaBucketArn = otaBucket.bucketArn;
 
-        new cdk.CfnOutput(this, 'OTABucketArn', {
-            value: this.otaBucketArn,
+        new cdk.CfnOutput(this, 'OTABucketUrl', {
+            value: otaBucket.s3UrlForObject(),
             description: `OTA bucket for new firmware builds`,
-            exportName: 'OTA-Bucket-Arn',
+            exportName: 'OTA-Bucket-url',
         });
 
         // Now monitor for inbound changes on new firmwares landing in the bucket
