@@ -21,12 +21,14 @@ export class GithubActionsAwsStack extends cdk.Stack {
         });
 
         const iamRepoDeployAccess = props.repositoryConfig.map(
-            r => `repo:${r.owner}/${r.repo}:environment:${Globals.STAGE_NAME}:${r.filter ?? '*'}`
+            r => `repo:${r.owner}/${r.repo}:${r.filter ?? '*'}`
         ).pop();
 
         const conditions: iam.Conditions = {
-            StringEquals: {
+            StringLike: {
                 'token.actions.githubusercontent.com:sub': iamRepoDeployAccess,
+            },
+            StringEquals: {
                 'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com'
             },
         }

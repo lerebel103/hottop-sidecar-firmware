@@ -8,36 +8,36 @@ on:
         required: true
         type: string
 jobs:
-#  build:
-#    name: Build firmware
-#    runs-on: ubuntu-latest
-#    environment: ${{ inputs.environment }}
-#    env:
-#      AWS_REGION: ${{ vars.AWS_REGION }}
-#      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
-#      STAGE: ${{ inputs.stage }}
-#    steps:
-#      - name: Checkout
-#        uses: actions/checkout@v4
-#        with:
-#          fetch-depth: 0
-#          fetch-tags: true
-#          submodules: 'recursive'
-#      - name: esp-idf build
-#        uses: espressif/esp-idf-ci-action@v1
-#        with:
-#          esp_idf_version: v5.1.1
-#          target: esp32s3
-#          path: '.'
-#          command: make build
-#      - uses: actions/upload-artifact@v4
-#        with:
-#          name: firmware.zip
-#          path: build/firmware.zip
+  build:
+    name: Build firmware
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+      STAGE: ${{ inputs.stage }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          submodules: 'recursive'
+      - name: esp-idf build
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.1.1
+          target: esp32s3
+          path: '.'
+          command: make build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware.zip
+          path: build/firmware.zip
   deploy:
     name: Deploy to S3
     runs-on: ubuntu-latest
-    #needs: build
+    needs: build
     environment: ${{ inputs.environment }}
     permissions:
       id-token: write
@@ -47,10 +47,10 @@ jobs:
       AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
       STAGE: ${{ inputs.stage }}
     steps:
-#      - uses: actions/download-artifact@master
-#        with:
-#          name: firmware.zip
-#          path: firmware.zip
+      - uses: actions/download-artifact@master
+        with:
+          name: firmware.zip
+          path: firmware.zip
       - name: Setup AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
         with:
