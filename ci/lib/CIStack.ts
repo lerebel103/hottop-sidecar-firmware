@@ -4,6 +4,7 @@ import {CodeBuildStep, CodePipeline, CodePipelineSource} from "aws-cdk-lib/pipel
 import {Cache, BuildSpec} from "aws-cdk-lib/aws-codebuild";
 import {BlockPublicAccess, Bucket, BucketEncryption} from "aws-cdk-lib/aws-s3";
 import {FirmwareStage} from "./FirmwareStage";
+import {PipelineType} from "aws-cdk-lib/aws-codepipeline";
 
 let myCachingBucket: Bucket | undefined = undefined;
 let cacheBucketName = "hottop-pipeline-cache-bucket";
@@ -63,8 +64,8 @@ export class CIStack extends cdk.Stack {
         });
 
         // ====== Add stages to the pipeline ======
-        const buildFirmwareStage = new FirmwareStage(this, "hottopsidecar-fw-stage",
+        const fwStage = new FirmwareStage(this, "hottopsidecar-fw-stage",
             props, sourceArtifact);
-        pipeline.addStage(buildFirmwareStage);
+        pipeline.addStage(fwStage);
     }
 }

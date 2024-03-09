@@ -1,7 +1,6 @@
 import * as cdk from 'aws-cdk-lib'
 import { Construct } from 'constructs'
 import {aws_iam, aws_iam as iam} from 'aws-cdk-lib'
-import {Globals} from "./globals";
 import {Effect} from "aws-cdk-lib/aws-iam";
 
 export interface GithubActionsAwsAuthCdkStackProps extends cdk.StackProps {

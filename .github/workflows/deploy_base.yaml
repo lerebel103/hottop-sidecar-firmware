@@ -32,8 +32,8 @@ jobs:
           command: make build
       - uses: actions/upload-artifact@v4
         with:
-          name: firmware.zip
-          path: build/firmware.zip
+          name: deploy.zip
+          path: build/deploy
   deploy:
     name: Deploy to S3
     runs-on: ubuntu-latest
@@ -49,8 +49,8 @@ jobs:
     steps:
       - uses: actions/download-artifact@master
         with:
-          name: firmware.zip
-          path: firmware.zip
+          name: deploy.zip
+          path: ./
       - name: Setup AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -58,4 +58,4 @@ jobs:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
       - name: Sync files to S3 bucket
         run: |
-          aws s3 cp firmware.zip/firmware.zip ${{ vars.AWS_OTA_BUCKET_URI }}/newBuilds/firmware.zip
+          aws s3 cp deploy.zip ${{ vars.AWS_OTA_BUCKET_URI }}/newBuilds/firmware.zip

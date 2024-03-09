@@ -116,9 +116,8 @@ project(${PROJECT_NAME} VERSION ${PROJECT_VERSION})
 
 
 # Rename target binary file with correct versioning
-# ${THING_TYPE}/r${HARDWARE_REVISION_MAJOR}/v${FIRMWARE_VERSION})
-set(FIRMWARE_TARGET_DIR ${CMAKE_BINARY_DIR}/firmware/)
-file(MAKE_DIRECTORY ${FIRMWARE_TARGET_DIR})
+set(DEPLOY_BASE_DIR ${CMAKE_BINARY_DIR}/deploy)
+set(FIRMWARE_TARGET_DIR ${DEPLOY_BASE_DIR}/firmware)
 
 SET(CMAKE_CXX_STANDARD -std=c++14)
 SET(CMAKE_C_STANDARD -std=c11)
@@ -143,11 +142,19 @@ SET(FINAL_FILE "${PROJECT_NAME}-r${HARDWARE_REVISION_MAJOR}-v${FIRMWARE_VERSION}
 
 # Package binaries into firmware directory
 add_custom_command(TARGET app POST_BUILD
+        # Grab the firmware and copy it to the deploy directory
+        COMMAND ${CMAKE_COMMAND} -E rm -fr "${DEPLOY_BASE_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${DEPLOY_BASE_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${FIRMWARE_TARGET_DIR}"
+
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/${PROJECT_NAME}.bin" "${CMAKE_BINARY_DIR}/${FINAL_FILE}"
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/${FINAL_FILE}" "${FIRMWARE_TARGET_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/*firmware.bin" "${FIRMWARE_TARGET_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/*firmware.elf" "${FIRMWARE_TARGET_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/*firmware.map" "${FIRMWARE_TARGET_DIR}"
+
+        # Now copy buildspec across for deployment
+        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_SOURCE_DIR}/ci/buildspec.yaml" "${DEPLOY_BASE_DIR}"
         )
 
 add_custom_command(TARGET bootloader POST_BUILD
@@ -156,9 +163,7 @@ add_custom_command(TARGET bootloader POST_BUILD
 )
 
 # And finally the target that zips up the firmware as a single artefact
-add_custom_target(firmware ALL
-        COMMAND zip -j -r firmware.zip ${FIRMWARE_TARGET_DIR}
-        BYPRODUCTS ${CMAKE_BINARY_DIR}/firmware.zip
+add_custom_target(deploy ALL
         DEPENDS app bootloader
 )
 
