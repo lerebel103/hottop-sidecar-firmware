@@ -7,8 +7,11 @@ env:
 phases:
   install:
     commands:
+      - ls -tral
       - echo "Codesign profile ARN $CODESIGN_PROFILE_ARN"
-      - echo "OTA Bucket OTA_BUCKET_PARAMETER_URI"
+      - echo "OTA Bucket $OTA_BUCKET_PARAMETER_URI"
+      - echo "CODEBUILD_SOURCE_REPO_URL $CODEBUILD_SOURCE_REPO_URL"
+      - echo "CODEBUILD_SOURCE_VERSION $CODEBUILD_SOURCE_VERSION"
   build:
     commands:
       - echo Entered the build phase...

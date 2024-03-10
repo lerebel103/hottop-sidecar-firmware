@@ -1,23 +1,14 @@
 import * as cdk from "aws-cdk-lib";
 import {Construct} from 'constructs';
-import {CodeBuildStep, CodePipeline, CodePipelineSource, ShellStep} from "aws-cdk-lib/pipelines";
-import {FileSet} from "aws-cdk-lib/pipelines/lib/blueprint/file-set";
-import {
-    ComputeType,
-    LinuxBuildImage,
-    LocalCacheMode,
-    PipelineProject,
-    Project,
-    Source
-} from "aws-cdk-lib/aws-codebuild";
-import {BuildSpec} from "aws-cdk-lib/aws-codebuild";
+import {CodePipelineSource} from "aws-cdk-lib/pipelines";
+import {BuildSpec, ComputeType, PipelineProject} from "aws-cdk-lib/aws-codebuild";
 import {Artifact, Pipeline, PipelineType} from "aws-cdk-lib/aws-codepipeline";
 import {CodeBuildAction, S3SourceAction, S3Trigger} from "aws-cdk-lib/aws-codepipeline-actions";
 import {BlockPublicAccess, Bucket, BucketEncryption} from "aws-cdk-lib/aws-s3";
 import {Globals} from "./globals";
 import {ReadWriteType, Trail} from "aws-cdk-lib/aws-cloudtrail";
 import {ParameterDataType, ParameterTier, StringParameter} from "aws-cdk-lib/aws-ssm";
-import {S3ImportSource} from "aws-cdk-lib/aws-cloudfront";
+import {Effect, PolicyStatement} from "aws-cdk-lib/aws-iam";
 
 const OTA_BUCKET_PARAMETER_URI = `/iot/rebelthings/hottopsidecar/ota-bucket`;
 
@@ -89,8 +80,21 @@ export class FirmwareDeployStack extends cdk.Stack {
             environment: {
                 computeType: ComputeType.SMALL,
             },
-            buildSpec: BuildSpec.fromSourceFilename('deploy/buildspec.yaml')
+            buildSpec: BuildSpec.fromSourceFilename('deploy/buildspec.yaml'),
         });
+
+
+
+        project.role?.addToPrincipalPolicy(new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: ['ssm:GetParameters'],
+            resources: [
+                `arn:aws:ssm:${Globals.AWS_REGION}:${Globals.AWS_ACCOUNT}:parameter${OTA_BUCKET_PARAMETER_URI}`,
+                `arn:aws:ssm:${Globals.AWS_REGION}:${Globals.AWS_ACCOUNT}:parameter/iot/rebelthings/codesign/esp32/pk`,
+                `arn:aws:ssm:${Globals.AWS_REGION}:${Globals.AWS_ACCOUNT}:parameter/iot/rebelthings/codesign/esp32/codesign-profile-arn`,
+                `arn:aws:ssm:${Globals.AWS_REGION}:${Globals.AWS_ACCOUNT}:parameter/iot/rebelthings/codesign/esp32/certificate-arn`,
+            ],
+        }));
 
         // Sign Firmware
         const deployAction = new CodeBuildAction({
@@ -98,7 +102,7 @@ export class FirmwareDeployStack extends cdk.Stack {
             project: project,
             input: sourceOutput,
         });
-        
+
         pipeline.addStage({stageName: 'deploy-firmware-OTA', actions: [deployAction]});
 
     }

@@ -1,0 +1,25 @@
+#!/usr/bin/env sh
+# Sign the specified firmware file and saves it to the destination file, using the specified code signing profile.
+# Usage: sign-firmware.sh <bucketArn> <firmware-file> <destination-file> <code-signing-profile>
+
+set -e
+
+# Check if the required parameters are provided
+if [ "$#" -ne 4 ]; then
+    echo "Usage: sign-firmware.sh <bucket_name> <firmware-file> <destination-file> <code-signing-profile>"
+    exit 1
+fi
+
+bucket_name=$(echo "$1" | sed -e "s/s3:\/\///g")
+firmware_file=$2
+destination_file=$3
+code_signing_profile=$(echo "$4" | sed -e "s/.*\///g")
+
+echo "{\"s3\":{\"bucketName\":\"$bucket_name\", \"key\":\"$firmware_file\", \"version\":\"latest\"}}"
+
+# Sign the firmware file
+echo "Signing the firmware file..."
+aws signer start-signing-job \
+    --source "{\"s3\":{\"bucketName\":\"$bucket_name\", \"key\":\"$firmware_file\", \"version\":\"latest\"}}" \
+    --destination "{\"s3\":{\"bucketName\":\"$bucket_name\", \"prefix\":\"$destination_file\"}}" \
+    --profile-name $code_signing_profile
