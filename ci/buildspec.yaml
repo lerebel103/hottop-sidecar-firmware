@@ -12,7 +12,7 @@ phases:
       - echo "OTA Bucket $OTA_BUCKET_PARAMETER_URI"
   build:
     commands:
-      - python3 deploy/bin/sign-firmware.py deploy/firmware release $OTA_BUCKET_PARAMETER_URI $CODESIGN_PROFILE_ARN
+      - ./deploy/bin/sign-firmware.sh ./deploy/firmware release $OTA_BUCKET_PARAMETER_URI $CODESIGN_PROFILE_ARN
     finally:
       - echo This always runs even if the install command fails
   post_build:

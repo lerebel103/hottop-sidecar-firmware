@@ -150,7 +150,7 @@ add_custom_command(TARGET app POST_BUILD
 
         # Drop in versio info
         COMMAND ${CMAKE_COMMAND} -E echo "${FIRMWARE_VERSION}" > "${FIRMWARE_TARGET_DIR}/version.txt"
-        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/ci/bin/sign-firmware.sh "${DEPLOY_BASE_DIR}/bin"
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/ci/bin/sign-firmware.sh "${DEPLOY_BASE_DIR}/bin/"
 
         # Copy relevent firmware files over
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/${PROJECT_NAME}.bin" "${CMAKE_BINARY_DIR}/${FINAL_FILE}"
