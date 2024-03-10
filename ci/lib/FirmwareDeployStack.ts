@@ -83,8 +83,6 @@ export class FirmwareDeployStack extends cdk.Stack {
             buildSpec: BuildSpec.fromSourceFilename('deploy/buildspec.yaml'),
         });
 
-
-
         project.role?.addToPrincipalPolicy(new PolicyStatement({
             effect: Effect.ALLOW,
             actions: ['ssm:GetParameters'],
@@ -94,6 +92,15 @@ export class FirmwareDeployStack extends cdk.Stack {
                 `arn:aws:ssm:${Globals.AWS_REGION}:${Globals.AWS_ACCOUNT}:parameter/iot/rebelthings/codesign/esp32/codesign-profile-arn`,
                 `arn:aws:ssm:${Globals.AWS_REGION}:${Globals.AWS_ACCOUNT}:parameter/iot/rebelthings/codesign/esp32/certificate-arn`,
             ],
+        }));
+
+        project.role?.addToPrincipalPolicy(new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: ['s3:PutObject', 's3:GetObject'],
+            resources: [
+                `${otaBucket.bucketArn}/release`,
+                `${otaBucket.bucketArn}/release/*`,
+            ]
         }));
 
         // Sign Firmware
