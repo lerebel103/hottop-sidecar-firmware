@@ -7,7 +7,9 @@ env:
 phases:
   install:
     commands:
-      - ls -tral
+      - ls -tral deploy
+      - ls -tral deploy/
+      - ls -tral deploy/firmware
       - echo "Codesign profile ARN $CODESIGN_PROFILE_ARN"
       - echo "OTA Bucket $OTA_BUCKET_PARAMETER_URI"
   build:
