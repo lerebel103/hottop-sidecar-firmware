@@ -7,7 +7,8 @@ env:
 phases:
   install:
     commands:
-      - echo Codesign profile ARN: $CODESIGN_PROFILE_ARN
+      - echo "Codesign profile ARN $CODESIGN_PROFILE_ARN"
+      - echo "OTA Bucket OTA_BUCKET_PARAMETER_URI"
   build:
     commands:
       - echo Entered the build phase...
