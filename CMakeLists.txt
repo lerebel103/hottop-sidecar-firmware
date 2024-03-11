@@ -138,7 +138,7 @@ MESSAGE(STATUS "Using CFLAGS ${CMAKE_C_FLAGS}")
 MESSAGE(STATUS "Using CXXFLAGS ${CMAKE_CXX_FLAGS}")
 
 # Rename target binary file with Hardware Revision, Firmware version and build type.
-SET(FINAL_FILE "${PROJECT_NAME}-r${HARDWARE_REVISION_MAJOR}-v${FIRMWARE_VERSION}-${GIT_SHORT_HASH}-${CMAKE_BUILD_TYPE}.bin")
+# SET(FINAL_FILE "${PROJECT_NAME}-r${HARDWARE_REVISION_MAJOR}-v${FIRMWARE_VERSION}-${GIT_SHORT_HASH}-${CMAKE_BUILD_TYPE}.bin")
 
 # Package binaries into firmware directory
 add_custom_command(TARGET app POST_BUILD
@@ -154,8 +154,8 @@ add_custom_command(TARGET app POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/ci/bin/sign-firmware.sh "${DEPLOY_BASE_DIR}/bin/"
 
         # Copy relevent firmware files over
-        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/${PROJECT_NAME}.bin" "${CMAKE_BINARY_DIR}/${FINAL_FILE}"
-        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/${FINAL_FILE}" "${FIRMWARE_TARGET_DIR}"
+        # COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/${PROJECT_NAME}.bin" "${CMAKE_BINARY_DIR}/${FINAL_FILE}"
+        # COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/${FINAL_FILE}" "${FIRMWARE_TARGET_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/*firmware.bin" "${FIRMWARE_TARGET_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/*firmware.elf" "${FIRMWARE_TARGET_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/*firmware.map" "${FIRMWARE_TARGET_DIR}"

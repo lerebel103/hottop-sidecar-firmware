@@ -105,16 +105,22 @@ export class FirmwareDeployStack extends cdk.Stack {
 
         project.role?.addToPrincipalPolicy(new PolicyStatement({
             effect: Effect.ALLOW,
-            actions: ['s3:PutObject', 's3:GetObject'],
+            actions: [
+                's3:*',
+            ],
             resources: [
-                `${otaBucket.bucketArn}/release`,
-                `${otaBucket.bucketArn}/release/*`,
+                `${otaBucket.bucketArn}`,
+                `${otaBucket.bucketArn}/*`,
             ]
         }));
         project.role?.addToPrincipalPolicy(new PolicyStatement({
             effect: Effect.ALLOW,
-            actions: ['signer:StartSigningJob'],
-            resources: [`${otaBucket.bucketArn}`, `${otaBucket.bucketArn}/*`]
+            actions: [
+                'signer:StartSigningJob',
+            ],
+            resources: [
+                '*',
+            ]
         }));
 
         // Sign Firmware
@@ -125,7 +131,5 @@ export class FirmwareDeployStack extends cdk.Stack {
         });
 
         pipeline.addStage({stageName: 'deploy-firmware-OTA', actions: [deployAction]});
-
     }
-
 }

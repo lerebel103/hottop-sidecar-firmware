@@ -18,16 +18,26 @@ code_signing_profile=$(echo "$4" | sed -e "s/.*\///g")
 # extract firmware version
 firmware_version=$(cat $local_deploy_folder/firmware/firmware_version.txt)
 hardware_revision=$(cat $local_deploy_folder/firmware/hardware_revision.txt)
-root_firmware_key=$destination_folder_key/$firmware_version/$hardware_revision/
+root_firmware_key=$destination_folder_key/$firmware_version/$hardware_revision
 source_firmware_key=$root_firmware_key/hottop-sidecar-firmware.bin
-signed_firmware_key=$root_firmware_key/signed/hottop-sidecar-firmware.bin
+signed_firmware_prefix=$root_firmware_key/signed-firmware-
 
 # First we copy the firmware files to the target folders
-aws s3 cp --recursive "$local_deploy_folder/firmware/" "s3://$bucket_name/$root_firmware_key"
+echo "Copying the firmware files to the target S3 bucket..."
+aws s3 cp --quiet --recursive "$local_deploy_folder/firmware/" "s3://$bucket_name/$root_firmware_key"
+
+# Get the version of the firmware file on the target S3 bucket
+echo Getting the version of the firmware file on the target S3 bucket...
+fw_ver=$(aws s3api list-object-versions \
+  --bucket "$bucket_name" \
+  --prefix "$source_firmware_key" \
+  --query 'Versions[?IsLatest].[VersionId]' \
+  --output text)
 
 # Sign the firmware file
-#echo "Signing the firmware file..."
+echo "Signing the firmware file..."
 aws signer start-signing-job \
-    --source "{\"s3\":{\"bucketName\":\"$bucket_name\", \"key\":\"$source_firmware_key\", \"version\":\"latest\"}}" \
-    --destination "{\"s3\":{\"bucketName\":\"$bucket_name\", \"prefix\":\"$signed_firmware_key\"}}" \
-    --profile-name "$code_signing_profile"
+                 --source=\{\"s3\":\{\"bucketName\":\"$bucket_name\",\"key\":\"$source_firmware_key\",\"version\":\"$fw_ver\"\}\} \
+                 --destination=\{\"s3\":\{\"bucketName\":\"$bucket_name\",\"prefix\":\"$signed_firmware_prefix\"\}\} \
+                 --profile-name=$code_signing_profile
+
