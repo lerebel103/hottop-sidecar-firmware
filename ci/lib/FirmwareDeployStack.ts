@@ -1,7 +1,7 @@
 import * as cdk from "aws-cdk-lib";
 import {Construct} from 'constructs';
 import {CodePipelineSource} from "aws-cdk-lib/pipelines";
-import {BuildSpec, ComputeType, PipelineProject} from "aws-cdk-lib/aws-codebuild";
+import {BuildSpec, Cache, ComputeType, PipelineProject} from "aws-cdk-lib/aws-codebuild";
 import {Artifact, Pipeline, PipelineType} from "aws-cdk-lib/aws-codepipeline";
 import {CodeBuildAction, S3SourceAction, S3Trigger} from "aws-cdk-lib/aws-codepipeline-actions";
 import {BlockPublicAccess, Bucket, BucketEncryption} from "aws-cdk-lib/aws-s3";
@@ -19,9 +19,16 @@ export class FirmwareDeployStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props: cdk.StackProps, sourceFiles: CodePipelineSource) {
         super(scope, id, props);
 
+        const myCachingBucket = new Bucket(this, `${Globals.THING_TYPE_NAME}-build-cache`, {
+            blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+            encryption: BucketEncryption.S3_MANAGED,
+            enforceSSL: true,
+            versioned: true,
+            removalPolicy: cdk.RemovalPolicy.RETAIN,
+        });
+
         // Define the bucket used to receive new firmware builds from GitHub Actions
         const otaBucket = new Bucket(this, `afr-ota-${Globals.THING_MANUFACTURER}-${Globals.THING_TYPE_NAME}-${Globals.STAGE_NAME}`, {
-            bucketName: `afr-ota-${Globals.THING_MANUFACTURER}-${Globals.THING_TYPE_NAME}-${Globals.STAGE_NAME}`,
             blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
             encryption: BucketEncryption.S3_MANAGED,
             enforceSSL: true,
@@ -79,8 +86,10 @@ export class FirmwareDeployStack extends cdk.Stack {
             description: 'Deploy firmware for OTA Jobs',
             environment: {
                 computeType: ComputeType.SMALL,
+                buildImage: require('aws-cdk-lib/aws-codebuild').LinuxBuildImage.STANDARD_7_0,
             },
             buildSpec: BuildSpec.fromSourceFilename('deploy/buildspec.yaml'),
+            cache: Cache.bucket(myCachingBucket),
         });
 
         project.role?.addToPrincipalPolicy(new PolicyStatement({
@@ -101,6 +110,11 @@ export class FirmwareDeployStack extends cdk.Stack {
                 `${otaBucket.bucketArn}/release`,
                 `${otaBucket.bucketArn}/release/*`,
             ]
+        }));
+        project.role?.addToPrincipalPolicy(new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: ['signer:StartSigningJob'],
+            resources: [`${otaBucket.bucketArn}`, `${otaBucket.bucketArn}/*`]
         }));
 
         // Sign Firmware

@@ -17,7 +17,7 @@ export class CIStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props: cdk.StackProps) {
         super(scope, id, props);
 
-        myCachingBucket = new Bucket(this, cacheBucketName, {
+        const myCachingBucket = new Bucket(this, cacheBucketName, {
             blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
             encryption: BucketEncryption.S3_MANAGED,
             enforceSSL: true,
