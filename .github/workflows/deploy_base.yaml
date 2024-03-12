@@ -23,11 +23,12 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
           submodules: 'recursive'
-      - name: Check CI
+      - name: Install Node
         uses: actions/setup-node@v4
         with:
           node-version: '18.x'
-          command: cd ci && npm i && npm run lint
+      - name: Check CI
+        run: cd ci && npm i && npm run lint
       - name: esp-idf build
         uses: espressif/esp-idf-ci-action@v1
         with:
