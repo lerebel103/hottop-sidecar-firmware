@@ -119,7 +119,7 @@ export class FirmwareDeployStack extends cdk.Stack {
                 'signer:StartSigningJob',
             ],
             resources: [
-                '*',
+                `arn:aws:signer:${Globals.AWS_REGION}:${Globals.AWS_ACCOUNT}:*`,
             ]
         }));
 
