@@ -14,7 +14,7 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       GH_OWNER: ${{ github.repository_owner }}
-      GH_REPOSITORY: ${{ github.repository.name }}
+      GH_REPOSITORY: ${{ github.repository }}
       AWS_REGION: ${{ vars.AWS_REGION }}
       AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
       STAGE: ${{ inputs.stage }}
