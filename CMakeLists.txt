@@ -142,8 +142,6 @@ MESSAGE(STATUS "Using CXXFLAGS ${CMAKE_CXX_FLAGS}")
 
 # Package binaries into firmware directory
 add_custom_command(TARGET app POST_BUILD
-        # Ensure ci is in order
-        COMMAND cd ${CMAKE_SOURCE_DIR}/ci && npm i && npm run lint-fix && cd -
 
         # Grab the firmware and copy it to the deploy directory
         COMMAND ${CMAKE_COMMAND} -E rm -fr "${DEPLOY_BASE_DIR}"

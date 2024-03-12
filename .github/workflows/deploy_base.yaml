@@ -23,6 +23,11 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
           submodules: 'recursive'
+      - name: Check CI
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          command: cd ci && npm i && npm run lint
       - name: esp-idf build
         uses: espressif/esp-idf-ci-action@v1
         with:
@@ -30,10 +35,6 @@ jobs:
           target: esp32s3
           path: '.'
           command: make build
-      - uses: actions/upload-artifact@v4
-        with:
-          name: deploy.zip
-          path: build/deploy.zip
   deploy:
     name: Deploy to S3
     runs-on: ubuntu-latest
