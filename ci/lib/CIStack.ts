@@ -11,7 +11,7 @@ import {
   Bucket,
   BucketEncryption,
 } from "aws-cdk-lib/aws-s3";
-import { FirmwareStage } from "./FirmwareStage";
+import { FirmwareStage, FirmwareStageProps } from "./FirmwareStage";
 
 const cacheBucketName = "hottop-pipeline-cache-bucket";
 
@@ -31,9 +31,13 @@ export class CIStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
+    // These could or should really be made paramater store variables
+    const owner = "lerebel103";
+    const repo = "hottop-sidecar-firmware";
+
     // GitHub source connection
     const sourceArtifact = CodePipelineSource.connection(
-      "lerebel103/hottop-sidecar-firmware",
+      `${owner}/${repo}`,
       "main",
       {
         connectionArn:
@@ -52,14 +56,19 @@ export class CIStack extends cdk.Stack {
         cache: Cache.bucket(myCachingBucket),
         partialBuildSpec: BuildSpec.fromObject({
           cache: {
-            paths: ["ci/cdk.out/**/*", "/root/.m2/**/*", "/root/.npm/**/*"],
+            paths: ["/root/.m2/**/*", "/root/.npm/**/*"],
           },
         }),
       }),
     });
 
     // ====== Add stages to the pipeline ======
-    const fwStage = new FirmwareStage(this, "hottopsidecar-fw-stage", props);
+    const fwStageProps: FirmwareStageProps = { ...props, owner, repo };
+    const fwStage = new FirmwareStage(
+      this,
+      "hottopsidecar-fw-stage",
+      fwStageProps,
+    );
     pipeline.addStage(fwStage);
   }
 }

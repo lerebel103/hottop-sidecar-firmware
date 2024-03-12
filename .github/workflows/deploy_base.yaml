@@ -30,7 +30,7 @@ jobs:
         with:
           node-version: '18.x'
       - name: Linting
-        run: echo {{ $GH_OWNER }} {{ $GH_REPOSITORY }} make lint
+        run: make lint
       - name: esp-idf build
         uses: espressif/esp-idf-ci-action@v1
         with:
