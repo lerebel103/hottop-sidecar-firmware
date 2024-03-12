@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-import 'source-map-support/register';
-import * as cdk from 'aws-cdk-lib';
-import { CIStack } from '../lib/CIStack';
-import {Globals} from "../lib/globals";
+import * as cdk from "aws-cdk-lib";
+import { CIStack } from "../lib/CIStack";
 
 const app = new cdk.App();
 
-new CIStack(app, 'hottopsidecar-pipeline', {
-  env: { account: Globals.AWS_ACCOUNT, region: Globals.AWS_REGION },
+new CIStack(app, "hottopsidecar-pipeline", {
+  env: {
+    account: process.env.CDK_DEFAULT_ACCOUNT,
+    region: process.env.CDK_DEFAULT_REGION,
+  },
 });
