@@ -11,7 +11,8 @@ import {
   Bucket,
   BucketEncryption,
 } from "aws-cdk-lib/aws-s3";
-import { FirmwareStage, FirmwareStageProps } from "./FirmwareStage";
+import { FirmwareDeployStage, FirmwareStageProps } from "./FirmwareDeployStage";
+import { Globals } from "./globals";
 
 const cacheBucketName = "hottop-pipeline-cache-bucket";
 
@@ -19,7 +20,7 @@ const cacheBucketName = "hottop-pipeline-cache-bucket";
  * A stack for the CI/CD pipeline
  *
  */
-export class CIStack extends cdk.Stack {
+export class SelfUpdateTopStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: cdk.StackProps) {
     super(scope, id, props);
 
@@ -46,8 +47,8 @@ export class CIStack extends cdk.Stack {
       },
     );
 
-    const pipeline = new CodePipeline(this, "hottopsidecar-build-pipeline", {
-      pipelineName: "hottopsidecar-build-pipeline",
+    const pipeline = new CodePipeline(this, "roastapowah-build-pipeline", {
+      pipelineName: "roastapowah-build-pipeline",
       synth: new CodeBuildStep("SynthStep", {
         input: sourceArtifact,
         installCommands: ["npm install -g aws-cdk"],
@@ -61,12 +62,12 @@ export class CIStack extends cdk.Stack {
         }),
       }),
     });
-
-    // ====== Add stages to the pipeline ======
+    
+    // Here's our standard firmware deploy stage to dev, stg, prd accounts
     const fwStageProps: FirmwareStageProps = { ...props, owner, repo };
-    const fwStage = new FirmwareStage(
+    const fwStage = new FirmwareDeployStage(
       this,
-      "hottopsidecar-fw-stage",
+      `${Globals.THING_TYPE}-fw-stage`,
       fwStageProps,
     );
     pipeline.addStage(fwStage);

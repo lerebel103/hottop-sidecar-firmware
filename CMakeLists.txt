@@ -20,7 +20,7 @@ ENDIF ()
 
 # If the environment does not specify a hardware revision to build for...
 IF (NOT THING_TYPE)
-    set(THING_TYPE "HottopSidecar"
+    set(THING_TYPE "roastapowah"
             CACHE INTERNAL "Set hardware thing type to build for."
             FORCE)
 ENDIF ()

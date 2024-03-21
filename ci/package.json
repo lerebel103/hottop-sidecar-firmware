@@ -1,5 +1,5 @@
 {
-  "name": "hottopsidecar-pipeline",
+  "name": "roastapowah-pipeline",
   "version": "0.1.0",
   "bin": {
     "ci": "bin/ci.js"
@@ -26,7 +26,7 @@
     "typescript": "~5.3.3"
   },
   "dependencies": {
-    "aws-cdk": "^2.131.0",
+    "aws-cdk": "^2.132.1",
     "aws-cdk-lib": "2.130.0",
     "constructs": "^10.0.0",
     "source-map-support": "^0.5.21"

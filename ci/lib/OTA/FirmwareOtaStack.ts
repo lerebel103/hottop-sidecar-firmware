@@ -10,6 +10,7 @@ import {
 import { Artifact, Pipeline, PipelineType } from "aws-cdk-lib/aws-codepipeline";
 import {
   CodeBuildAction,
+  ManualApprovalAction,
   S3SourceAction,
   S3Trigger,
 } from "aws-cdk-lib/aws-codepipeline-actions";
@@ -18,7 +19,7 @@ import {
   Bucket,
   BucketEncryption,
 } from "aws-cdk-lib/aws-s3";
-import { Globals } from "./globals";
+import { Globals } from "../globals";
 import { ReadWriteType, Trail } from "aws-cdk-lib/aws-cloudtrail";
 import {
   ParameterDataType,
@@ -27,9 +28,9 @@ import {
 } from "aws-cdk-lib/aws-ssm";
 import { Effect, PolicyStatement } from "aws-cdk-lib/aws-iam";
 
-const OTA_BUCKET_PARAMETER_URI = `/iot/rebelthings/hottopsidecar/ota-bucket`;
+const OTA_BUCKET_PARAMETER_URI = `/iot/rebelthings/roastapowah/ota-bucket`;
 
-export class FirmwareDeployStack extends cdk.Stack {
+export class FirmwareOtaStack extends cdk.Stack {
   otaBucketArn: undefined | string = undefined;
 
   constructor(scope: Construct, id: string, props: cdk.StackProps) {
@@ -37,7 +38,7 @@ export class FirmwareDeployStack extends cdk.Stack {
 
     const myCachingBucket = new Bucket(
       this,
-      `${Globals.THING_TYPE_NAME}-build-cache`,
+      `${Globals.THING_TYPE}-build-cache`,
       {
         blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
         encryption: BucketEncryption.S3_MANAGED,
@@ -50,7 +51,7 @@ export class FirmwareDeployStack extends cdk.Stack {
     // Define the bucket used to receive new firmware builds from GitHub Actions
     const otaBucket = new Bucket(
       this,
-      `afr-ota-${Globals.THING_MANUFACTURER}-${Globals.THING_TYPE_NAME}-${Globals.STAGE_NAME}`,
+      `afr-ota-${Globals.THING_MANUFACTURER}-${Globals.THING_TYPE}-${Globals.STAGE_NAME}`,
       {
         blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
         encryption: BucketEncryption.S3_MANAGED,
@@ -69,11 +70,11 @@ export class FirmwareDeployStack extends cdk.Stack {
     });
 
     // But also store as parameter in SSM
-    new StringParameter(this, `${Globals.THING_TYPE_NAME}-ota-uri`, {
+    new StringParameter(this, `${Globals.THING_TYPE}-ota-uri`, {
       parameterName: OTA_BUCKET_PARAMETER_URI,
       stringValue: otaBucket.s3UrlForObject(),
       dataType: ParameterDataType.TEXT,
-      description: `The URI of the OTA bucket for ${Globals.THING_TYPE_NAME} firmware`,
+      description: `The URI of the OTA bucket for ${Globals.THING_TYPE} firmware`,
       tier: ParameterTier.STANDARD,
     });
 
@@ -101,8 +102,8 @@ export class FirmwareDeployStack extends cdk.Stack {
     });
 
     // Create a pipeline
-    const pipeline = new Pipeline(this, "hottopsidecar-fw-pipeline", {
-      pipelineName: "hottopsidecar-fw-pipeline",
+    const pipeline = new Pipeline(this, "roastapowah-fw-pipeline", {
+      pipelineName: "roastapowah-fw-pipeline",
       pipelineType: PipelineType.V2,
     });
     pipeline.addStage({
@@ -111,7 +112,7 @@ export class FirmwareDeployStack extends cdk.Stack {
     });
 
     // Create a CodeBuild project
-    const project = new PipelineProject(this, "hottopsidecar-fw-project", {
+    const project = new PipelineProject(this, "roastapowah-fw-project", {
       description: "Deploy firmware for OTA Jobs",
       environment: {
         computeType: ComputeType.SMALL,
@@ -148,17 +149,93 @@ export class FirmwareDeployStack extends cdk.Stack {
         resources: [`arn:aws:signer:${this.region}:${this.account}:*`],
       }),
     );
-
     // Sign Firmware
-    const deployAction = new CodeBuildAction({
-      actionName: "DeployFirmware",
+    const signAction = new CodeBuildAction({
+      actionName: "sign-firmware",
       project: project,
       input: sourceOutput,
+      runOrder: 1,
+    });
+
+    const devProject = new PipelineProject(
+      this,
+      "roastapowah-fw-project-dev",
+      {
+        description: "Deploy firmware for OTA Jobs in Staging",
+        environment: {
+          computeType: ComputeType.SMALL,
+          buildImage: LinuxBuildImage.STANDARD_7_0,
+        },
+        buildSpec: BuildSpec.fromSourceFilename("buildspec.yaml"),
+        cache: Cache.bucket(myCachingBucket),
+      },
+    );
+    const devAction = new CodeBuildAction({
+      actionName: "OTA-deploy-dev",
+      project: devProject,
+      input: sourceOutput,
+      runOrder: 2,
+    });
+
+    const stgGate = new ManualApprovalAction({
+      actionName: "StagingGate",
+      runOrder: 1,
+    });
+    const stgProject = new PipelineProject(
+      this,
+      "roastapowah-fw-project-stg",
+      {
+        description: "Deploy firmware for OTA Jobs in Staging",
+        environment: {
+          computeType: ComputeType.SMALL,
+          buildImage: LinuxBuildImage.STANDARD_7_0,
+        },
+        buildSpec: BuildSpec.fromSourceFilename("buildspec.yaml"),
+        cache: Cache.bucket(myCachingBucket),
+      },
+    );
+    const stgAction = new CodeBuildAction({
+      actionName: "OTA-deploy-stg",
+      project: stgProject,
+      input: sourceOutput,
+      runOrder: 2,
+    });
+
+    const prdGate = new ManualApprovalAction({
+      actionName: "ProductionGate",
+      runOrder: 1,
+    });
+    const prdProject = new PipelineProject(
+      this,
+      "roastapowah-fw-project-prd",
+      {
+        description: "Deploy firmware for OTA Jobs in Production",
+        environment: {
+          computeType: ComputeType.SMALL,
+          buildImage: LinuxBuildImage.STANDARD_7_0,
+        },
+        buildSpec: BuildSpec.fromSourceFilename("buildspec.yaml"),
+        cache: Cache.bucket(myCachingBucket),
+      },
+    );
+    const prdAction = new CodeBuildAction({
+      actionName: "OTA-deploy-prd",
+      project: prdProject,
+      input: sourceOutput,
+      runOrder: 2,
     });
 
     pipeline.addStage({
-      stageName: "deploy-firmware-OTA",
-      actions: [deployAction],
+      stageName: "deploy-dev",
+      actions: [signAction, devAction],
+    });
+    pipeline.addStage({
+      stageName: "deploy-stg",
+      actions: [stgGate, stgAction],
+    });
+    pipeline.addStage({
+      stageName: "deploy-prd",
+      actions: [prdGate, prdAction],
     });
   }
 }

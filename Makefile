@@ -12,3 +12,7 @@ configure:
 build: configure
 	cd build && ninja deploy
 
+onboard-device:
+	# creates nvram and loads onto target device
+	if [ ! -e .venv ]; then python3 -m venv .venv; fi
+	source .venv/bin/activate && pip3 install -q -r requirements.txt && python3 bin/flash_provisioning_nvram.py

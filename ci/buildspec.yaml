@@ -3,14 +3,20 @@ version: 0.2
 env:
   parameter-store:
     CODESIGN_PROFILE_ARN: '/iot/rebelthings/codesign/esp32/codesign-profile-arn'
-    OTA_BUCKET_PARAMETER_URI: '/iot/rebelthings/hottopsidecar/ota-bucket'
+    OTA_BUCKET_PARAMETER_URI: '/iot/rebelthings/roastapowah/ota-bucket'
+
 phases:
   build:
     commands:
-      - ./deploy/bin/sign-firmware.sh $CODEBUILD_SRC_DIR/deploy $OTA_BUCKET_PARAMETER_URI release $CODESIGN_PROFILE_ARN
+      - ./deploy/bin/sign-firmware.sh $CODEBUILD_SRC_DIR/deploy $OTA_BUCKET_PARAMETER_URI release $CODESIGN_PROFILE_ARN > signed-firmware.json
   post_build:
     commands:
-      - echo Entered the post_build phase...
+      - echo Creating OTA update Jobs
+
+artifacts:
+  files:
+    - signed-firmware.json
+
 cache:
   paths:
     - '/root/.m2/**/*'

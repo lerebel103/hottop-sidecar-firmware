@@ -1,4 +1,5 @@
 .idea
+.venv
 cmake-build-*
 /managed_components
 /.DS_Store
