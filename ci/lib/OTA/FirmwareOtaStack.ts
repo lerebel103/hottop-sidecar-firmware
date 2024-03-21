@@ -157,19 +157,15 @@ export class FirmwareOtaStack extends cdk.Stack {
       runOrder: 1,
     });
 
-    const devProject = new PipelineProject(
-      this,
-      "roastapowah-fw-project-dev",
-      {
-        description: "Deploy firmware for OTA Jobs in Staging",
-        environment: {
-          computeType: ComputeType.SMALL,
-          buildImage: LinuxBuildImage.STANDARD_7_0,
-        },
-        buildSpec: BuildSpec.fromSourceFilename("buildspec.yaml"),
-        cache: Cache.bucket(myCachingBucket),
+    const devProject = new PipelineProject(this, "roastapowah-fw-project-dev", {
+      description: "Deploy firmware for OTA Jobs in Staging",
+      environment: {
+        computeType: ComputeType.SMALL,
+        buildImage: LinuxBuildImage.STANDARD_7_0,
       },
-    );
+      buildSpec: BuildSpec.fromSourceFilename("buildspec.yaml"),
+      cache: Cache.bucket(myCachingBucket),
+    });
     const devAction = new CodeBuildAction({
       actionName: "OTA-deploy-dev",
       project: devProject,
@@ -181,19 +177,15 @@ export class FirmwareOtaStack extends cdk.Stack {
       actionName: "StagingGate",
       runOrder: 1,
     });
-    const stgProject = new PipelineProject(
-      this,
-      "roastapowah-fw-project-stg",
-      {
-        description: "Deploy firmware for OTA Jobs in Staging",
-        environment: {
-          computeType: ComputeType.SMALL,
-          buildImage: LinuxBuildImage.STANDARD_7_0,
-        },
-        buildSpec: BuildSpec.fromSourceFilename("buildspec.yaml"),
-        cache: Cache.bucket(myCachingBucket),
+    const stgProject = new PipelineProject(this, "roastapowah-fw-project-stg", {
+      description: "Deploy firmware for OTA Jobs in Staging",
+      environment: {
+        computeType: ComputeType.SMALL,
+        buildImage: LinuxBuildImage.STANDARD_7_0,
       },
-    );
+      buildSpec: BuildSpec.fromSourceFilename("buildspec.yaml"),
+      cache: Cache.bucket(myCachingBucket),
+    });
     const stgAction = new CodeBuildAction({
       actionName: "OTA-deploy-stg",
       project: stgProject,
@@ -205,19 +197,15 @@ export class FirmwareOtaStack extends cdk.Stack {
       actionName: "ProductionGate",
       runOrder: 1,
     });
-    const prdProject = new PipelineProject(
-      this,
-      "roastapowah-fw-project-prd",
-      {
-        description: "Deploy firmware for OTA Jobs in Production",
-        environment: {
-          computeType: ComputeType.SMALL,
-          buildImage: LinuxBuildImage.STANDARD_7_0,
-        },
-        buildSpec: BuildSpec.fromSourceFilename("buildspec.yaml"),
-        cache: Cache.bucket(myCachingBucket),
+    const prdProject = new PipelineProject(this, "roastapowah-fw-project-prd", {
+      description: "Deploy firmware for OTA Jobs in Production",
+      environment: {
+        computeType: ComputeType.SMALL,
+        buildImage: LinuxBuildImage.STANDARD_7_0,
       },
-    );
+      buildSpec: BuildSpec.fromSourceFilename("buildspec.yaml"),
+      cache: Cache.bucket(myCachingBucket),
+    });
     const prdAction = new CodeBuildAction({
       actionName: "OTA-deploy-prd",
       project: prdProject,
