@@ -42,7 +42,7 @@ export class SelfUpdateTopStack extends cdk.Stack {
       "main",
       {
         connectionArn:
-          "arn:aws:codestar-connections:ap-southeast-2:407440998404:connection/b17a644f-371b-46ed-9ddf-8578dd6eb898",
+          "arn:aws:codestar-connections:ap-southeast-2:058264240068:connection/e076670d-5406-417e-b6d0-b587644391ae",
         codeBuildCloneOutput: true,
       },
     );
@@ -62,7 +62,7 @@ export class SelfUpdateTopStack extends cdk.Stack {
         }),
       }),
     });
-    
+
     // Here's our standard firmware deploy stage to dev, stg, prd accounts
     const fwStageProps: FirmwareStageProps = { ...props, owner, repo };
     const fwStage = new FirmwareDeployStage(
