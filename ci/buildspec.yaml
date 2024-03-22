@@ -9,6 +9,7 @@ phases:
   build:
     commands:
       - ./deploy/bin/sign-firmware.sh $CODEBUILD_SRC_DIR/deploy $OTA_BUCKET_PARAMETER_URI release $CODESIGN_PROFILE_ARN > signed-firmware.json
+      - cat signed-firmware.json
   post_build:
     commands:
       - echo Creating OTA update Jobs
