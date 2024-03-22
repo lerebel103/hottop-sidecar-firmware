@@ -2,7 +2,7 @@
 # Sign the specified firmware file and saves it to the destination file, using the specified code signing profile.
 # Usage: sign-firmware.sh <local-deploy-folder> <bucketArn> <destination-folder-key> <code-signing-profile>
 
-set -e
+set -x
 
 # Check if the required parameters are provided
 if [ "$#" -ne 4 ]; then
@@ -19,7 +19,7 @@ code_signing_profile=$(echo "$4" | sed -e "s/.*\///g")
 firmware_version=$(cat $local_deploy_folder/firmware/firmware_version.txt)
 hardware_revision=$(cat $local_deploy_folder/firmware/hardware_revision.txt)
 root_firmware_key=$destination_folder_key/$firmware_version/$hardware_revision
-source_firmware_key=$root_firmware_key/hottop-sidecar-firmware.bin
+source_firmware_key=$root_firmware_key/roastapowah-firmware.bin
 signed_firmware_prefix=$root_firmware_key/signed-firmware-
 
 # First we copy the firmware files to the target folders

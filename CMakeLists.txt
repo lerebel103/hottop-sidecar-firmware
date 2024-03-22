@@ -110,7 +110,7 @@ execute_process(
 )
 
 set(IDF_TARGET esp32s3)
-set(PROJECT_NAME hottop-sidecar-firmware)
+set(PROJECT_NAME roastapowah-firmware)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(${PROJECT_NAME} VERSION ${PROJECT_VERSION})
 
