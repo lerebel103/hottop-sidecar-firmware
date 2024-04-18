@@ -21,17 +21,15 @@ import {
 } from "aws-cdk-lib/aws-s3";
 import { Globals } from "../globals";
 import { ReadWriteType, Trail } from "aws-cdk-lib/aws-cloudtrail";
-import {
-  ParameterDataType,
-  ParameterTier,
-  StringParameter,
-} from "aws-cdk-lib/aws-ssm";
 import { Effect, PolicyStatement } from "aws-cdk-lib/aws-iam";
+import { RemovalPolicy } from "aws-cdk-lib";
+import { RetentionDays } from "aws-cdk-lib/aws-logs";
 
-const OTA_BUCKET_PARAMETER_URI = `/iot/rebelthings/roastapowah/ota-bucket`;
+// This can be found as an output parameter to the rebelthings-iot stack
+const DEPLOY_BUCKET_IMPORT_KEY = "RebelthingsIoTStack:OtaBucketArn";
 
 export class FirmwareOtaStack extends cdk.Stack {
-  otaBucketArn: undefined | string = undefined;
+  deployBucketArn: undefined | string = undefined;
 
   constructor(scope: Construct, id: string, props: cdk.StackProps) {
     super(scope, id, props);
@@ -44,48 +42,29 @@ export class FirmwareOtaStack extends cdk.Stack {
         encryption: BucketEncryption.S3_MANAGED,
         enforceSSL: true,
         versioned: true,
-        removalPolicy: cdk.RemovalPolicy.RETAIN,
+        removalPolicy: RemovalPolicy.DESTROY,
+        autoDeleteObjects: true,
       },
     );
 
-    // Define the bucket used to receive new firmware builds from GitHub Actions
-    const otaBucket = new Bucket(
+    // Find the deployment bucket from the rebelthings-iot stack
+    this.deployBucketArn = cdk.Fn.importValue(DEPLOY_BUCKET_IMPORT_KEY);
+    const deployBucket = Bucket.fromBucketArn(
       this,
-      `afr-ota-${Globals.THING_MANUFACTURER}-${Globals.THING_TYPE}-${Globals.STAGE_NAME}`,
-      {
-        blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-        encryption: BucketEncryption.S3_MANAGED,
-        enforceSSL: true,
-        versioned: true,
-        removalPolicy: cdk.RemovalPolicy.RETAIN,
-      },
+      "deployBucket",
+      this.deployBucketArn,
     );
-    this.otaBucketArn = otaBucket.bucketArn;
-
-    // Export the bucket URL
-    new cdk.CfnOutput(this, "OTABucketUrl", {
-      value: otaBucket.s3UrlForObject(),
-      description: `OTA bucket for new firmware builds`,
-      exportName: "OTA-Bucket-url",
-    });
-
-    // But also store as parameter in SSM
-    new StringParameter(this, `${Globals.THING_TYPE}-ota-uri`, {
-      parameterName: OTA_BUCKET_PARAMETER_URI,
-      stringValue: otaBucket.s3UrlForObject(),
-      dataType: ParameterDataType.TEXT,
-      description: `The URI of the OTA bucket for ${Globals.THING_TYPE} firmware`,
-      tier: ParameterTier.STANDARD,
-    });
 
     // Now monitor for inbound changes on new firmwares landing in the bucket
     const sourceOutput = new Artifact();
-    const key = "newBuilds/firmware.zip";
-    const trail = new Trail(this, "CloudTrail");
+    const key = `deploy/${Globals.THING_TYPE}/firmware.zip`;
+    const trail = new Trail(this, "CloudTrail", {
+      cloudWatchLogsRetention: RetentionDays.THREE_MONTHS,
+    });
     trail.addS3EventSelector(
       [
         {
-          bucket: otaBucket,
+          bucket: deployBucket,
           objectPrefix: key,
         },
       ],
@@ -93,10 +72,12 @@ export class FirmwareOtaStack extends cdk.Stack {
         readWriteType: ReadWriteType.WRITE_ONLY,
       },
     );
+    trail.applyRemovalPolicy(RemovalPolicy.DESTROY);
+
     const sourceAction = new S3SourceAction({
       actionName: "S3Source",
       bucketKey: key,
-      bucket: otaBucket,
+      bucket: deployBucket,
       output: sourceOutput,
       trigger: S3Trigger.EVENTS,
     });
@@ -127,7 +108,6 @@ export class FirmwareOtaStack extends cdk.Stack {
         effect: Effect.ALLOW,
         actions: ["ssm:GetParameters"],
         resources: [
-          `arn:aws:ssm:${this.region}:${this.account}:parameter${OTA_BUCKET_PARAMETER_URI}`,
           `arn:aws:ssm:${this.region}:${this.account}:parameter/iot/rebelthings/codesign/esp32/pk`,
           `arn:aws:ssm:${this.region}:${this.account}:parameter/iot/rebelthings/codesign/esp32/codesign-profile-arn`,
           `arn:aws:ssm:${this.region}:${this.account}:parameter/iot/rebelthings/codesign/esp32/certificate-arn`,
@@ -139,7 +119,7 @@ export class FirmwareOtaStack extends cdk.Stack {
       new PolicyStatement({
         effect: Effect.ALLOW,
         actions: ["s3:*"],
-        resources: [`${otaBucket.bucketArn}`, `${otaBucket.bucketArn}/*`],
+        resources: [`${deployBucket.bucketArn}`, `${deployBucket.bucketArn}/*`],
       }),
     );
     project.role?.addToPrincipalPolicy(

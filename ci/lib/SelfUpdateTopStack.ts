@@ -13,6 +13,7 @@ import {
 } from "aws-cdk-lib/aws-s3";
 import { FirmwareDeployStage, FirmwareStageProps } from "./FirmwareDeployStage";
 import { Globals } from "./globals";
+import { RemovalPolicy } from "aws-cdk-lib";
 
 const cacheBucketName = "hottop-pipeline-cache-bucket";
 
@@ -29,7 +30,8 @@ export class SelfUpdateTopStack extends cdk.Stack {
       encryption: BucketEncryption.S3_MANAGED,
       enforceSSL: true,
       versioned: true,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
     });
 
     // These could or should really be made paramater store variables

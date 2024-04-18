@@ -2,15 +2,16 @@ import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { aws_iam as iam } from "aws-cdk-lib";
 import { Effect } from "aws-cdk-lib/aws-iam";
+import { Globals } from "./globals";
 
 /**
  * Interface for the properties of GithubActionsAwsAuthCdkStackProps.
  * @property repositoryConfig - Array of GitHub repository configurations.
- * @property otaBucketArn - The ARN of the OTA bucket.
+ * @property deployBucketArn - The ARN of the deployment bucket.
  */
 export interface GithubActionsAwsAuthCdkStackProps extends cdk.StackProps {
   readonly repositoryConfig: { owner: string; repo: string; filter?: string }[];
-  readonly otaBucketArn: string | undefined;
+  readonly deployBucketArn: string | undefined;
 }
 
 /**
@@ -74,10 +75,7 @@ export class GithubActionsAwsStack extends cdk.Stack {
       new iam.PolicyStatement({
         effect: Effect.ALLOW,
         actions: ["s3:PutObject"],
-        resources: [
-          `${props.otaBucketArn}/newBuilds`,
-          `${props.otaBucketArn}/newBuilds/firmware.zip`,
-        ],
+        resources: [`${props.deployBucketArn}/deploy/${Globals.THING_TYPE}/*`],
       }),
     );
 

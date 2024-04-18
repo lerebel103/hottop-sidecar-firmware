@@ -33,7 +33,7 @@ export class FirmwareDeployStage extends Stage {
     // Install GitHub Actions OIDC auth
     const ghProps = {
       repositoryConfig: [{ owner: props.owner, repo: props.repo }],
-      otaBucketArn: fwResources.otaBucketArn,
+      deployBucketArn: fwResources.deployBucketArn,
     };
 
     // Create a new GitHub Actions AWS Stack.
