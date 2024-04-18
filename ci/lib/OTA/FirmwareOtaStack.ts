@@ -108,6 +108,7 @@ export class FirmwareOtaStack extends cdk.Stack {
         effect: Effect.ALLOW,
         actions: ["ssm:GetParameters"],
         resources: [
+          `arn:aws:ssm:${this.region}:${this.account}:parameter/iot/rebelthings/ota-bucket`,
           `arn:aws:ssm:${this.region}:${this.account}:parameter/iot/rebelthings/codesign/esp32/pk`,
           `arn:aws:ssm:${this.region}:${this.account}:parameter/iot/rebelthings/codesign/esp32/codesign-profile-arn`,
           `arn:aws:ssm:${this.region}:${this.account}:parameter/iot/rebelthings/codesign/esp32/certificate-arn`,

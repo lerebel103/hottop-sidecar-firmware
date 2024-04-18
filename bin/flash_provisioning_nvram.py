@@ -16,6 +16,11 @@ import random
 
 import requests
 
+# Check that profile is set
+if 'AWS_DEFAULT_PROFILE' not in os.environ:
+    print("Please set AWS_DEFAULT_PROFILE")
+    exit(1)
+
 iot_client = boto3.client('iot')
 sm_client = boto3.client('secretsmanager')
 ssm_client = boto3.client('ssm')
@@ -116,11 +121,6 @@ def fix_b64_content(cert):
 
 
 def main():
-    # Check that profile is set
-    if 'AWS_DEFAULT_PROFILE' not in os.environ:
-        print("Please set AWS_DEFAULT_PROFILE")
-        exit(1)
-
     print(f"Retrieving onboarding details for thing type {thingType}")
 
     working_dir = "./"
